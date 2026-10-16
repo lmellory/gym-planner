@@ -1,4 +1,4 @@
-# 💅 Ежедневник тренера маникюра: Telegram Mini App
+# 💅 Ежедневник тренера: Telegram Mini App
 
 Telegram Mini App + бот-ассистент для тренера маникюра и педикюра.  
 Работает 24/7 в бессерверном облаке **Cloudflare Workers** с базой данных **Turso (libSQL/SQLite)**.
