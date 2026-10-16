@@ -98,8 +98,9 @@ appointments.post('/', async (c) => {
   // Отправляем в фоне: не задерживает ответ, ошибки не ломают сохранение.
   // Сообщение бот сам удалит из чата через NEW_APPT_MSG_TTL_SEC (запись в базе остаётся).
   const notify = (async () => {
-    if (c.get('actorId') === userId) return;
+    // ensureUser вызываем всегда: он заводит строку пользователя (её читают /users, /backupall, воскресные копии)
     const u = await ensureUser(c.env.DB, userId, c.env.TZ);
+    if (c.get('actorId') === userId) return;
     if (!u.notify_new_appt) return;
     const [y, m, dNum] = d.date.split('-');
     const text =
