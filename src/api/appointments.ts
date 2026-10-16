@@ -103,7 +103,7 @@ appointments.post('/', async (c) => {
     const text =
       `🏋️ <b>Новая запись: ${dNum}.${m}.${y}</b>\n` +
       `🕐 <b>${timeLabel(d)}</b> · ${escapeHtml(d.client_name)}${d.who ? ` (${escapeHtml(d.who)})` : ''}\n` +
-      `🏋️ ${serviceLabel({ ...d, id, user_id: userId })}` +
+      `🏋️ ${serviceLabel(d)}` +
       (d.comment ? `\n💬 ${escapeHtml(d.comment)}` : '');
     const r = await sendMessage(c.env, userId, text);
     const messageId = r.result?.message_id;

@@ -48,7 +48,9 @@ export async function createTestDb(opts: { upTo?: string } = {}) {
     db: createD1FromClient(client),
     close() {
       client.close();
-      rmSync(dir, { recursive: true, force: true });
+      try {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {}
     },
   };
 }

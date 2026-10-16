@@ -64,7 +64,7 @@ describe('записи', () => {
   it('плохие данные → 400 с понятным текстом', async () => {
     const bad = (o: object) => api(env, OWNER, 'POST', '/api/appointments', appt(o));
     expect((await bad({ date: '2026-02-31' })).json.error).toContain('дата');
-    expect((await bad({ service: 'hairdo' })).json.error).toContain('услуга');
+    expect((await bad({ service: 'hairdo' })).json.error).toContain('вид занятия');
     expect((await bad({ status: 'done' })).json.error).toContain('статус');
     expect((await bad({ price: 12.5 })).json.error).toContain('Цена');
     expect((await bad({ client_name: ' ' })).status).toBe(400);

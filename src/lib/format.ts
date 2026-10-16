@@ -18,7 +18,7 @@ const SERVICE_LABELS: Record<string, string> = {
   online: 'онлайн-тренировка',
 };
 
-export function serviceLabel(a: Pick<Appointment, 'service'>): string {
+export function serviceLabel(a: { service: string }): string {
   return SERVICE_LABELS[a.service] ?? a.service;
 }
 

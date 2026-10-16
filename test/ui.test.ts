@@ -43,13 +43,14 @@ beforeAll(async () => {
   w.eval(`(() => { const R = Date, fixed = new R('${NOW}').getTime();
     class F extends R { constructor(...a) { if (a.length === 0) super(fixed); else super(...a); } static now() { return fixed; } }
     globalThis.Date = F; })()`);
-  // Запросы приложения идут прямо в настоящий сервер с настоящей подписью Telegram
-  w.fetch = async (url: string, opts: any = {}) =>
-    worker.fetch(
-      new Request('https://app.test' + url, { ...opts, headers: { ...(opts.headers || {}), 'X-Init-Data': await signInitData(OWNER) } }),
+  w.fetch = async (url: string, opts: any = {}) => {
+    const { signal, ...rest } = opts;
+    return worker.fetch(
+      new Request('https://app.test' + url, { ...rest, headers: { ...(rest.headers || {}), 'X-Init-Data': await signInitData(OWNER) } }),
       env,
       undefined as any,
     );
+  };
   w.addEventListener('error', (e: any) => errors.push(e.message));
   w.eval(read('app.js'));
   await new Promise((r) => setTimeout(r, 150)); // первая загрузка недели и дня
