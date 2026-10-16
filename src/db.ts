@@ -492,15 +492,47 @@ export async function insertClient(db: D1Database, userId: number, data: ClientI
   return (res.meta.last_row_id as number) || 0;
 }
 
-export async function updateClient(db: D1Database, userId: number, id: number, data: ClientInput): Promise<boolean> {
-  const res = await db
+/**
+ * Обновляет клиента. Записи связаны с клиентом по имени, поэтому при смене имени оно каскадно меняется
+ * во всех его записях (одним батчем), и история не теряется.
+ * 'ok' — готово, 'not_found' — нет такого клиента, 'name_taken' — новое имя уже занято другим клиентом.
+ */
+export async function updateClient(
+  db: D1Database,
+  userId: number,
+  id: number,
+  data: ClientInput,
+): Promise<'ok' | 'not_found' | 'name_taken'> {
+  const current = await db.prepare('SELECT name FROM clients WHERE user_id = ? AND id = ?').bind(userId, id).first<{ name: string }>();
+  if (!current) return 'not_found';
+  const newName = data.name.trim();
+
+  if (newName !== current.name) {
+    const taken = await db
+      .prepare('SELECT id FROM clients WHERE user_id = ? AND name = ? AND id != ?')
+      .bind(userId, newName, id)
+      .first<{ id: number }>();
+    if (taken) return 'name_taken';
+  }
+
+  const update = db
     .prepare(
       `UPDATE clients SET name = ?, phone = ?, telegram = ?, notes = ?, birthday = ?, updated_at = datetime('now')
        WHERE user_id = ? AND id = ?`,
     )
-    .bind(data.name.trim(), data.phone || null, data.telegram || null, data.notes || null, data.birthday || null, userId, id)
-    .run();
-  return (res.meta.changes ?? 0) > 0;
+    .bind(newName, data.phone || null, data.telegram || null, data.notes || null, data.birthday || null, userId, id);
+
+  if (newName === current.name) {
+    await update.run();
+  } else {
+    await db.batch([
+      update,
+      db
+        .prepare("UPDATE appointments SET client_name = ?, updated_at = datetime('now') WHERE user_id = ? AND client_name = ?")
+        .bind(newName, userId, current.name),
+    ]);
+  }
+  return 'ok';
 }
 
 export async function deleteClient(db: D1Database, userId: number, id: number): Promise<boolean> {
