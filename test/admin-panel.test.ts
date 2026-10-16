@@ -159,6 +159,17 @@ describe('правка записей за тренера (X-Act-As)', () => {
     expect(messages().some((m) => m.chat_id === OTHER && String(m.text).includes('Новая запись'))).toBe(true);
   });
 
+  it('админ записывает сплит с участниками: запись на каждого, а уведомление тренеру одно, с именами всех', async () => {
+    const r = await apiAs(ADMIN2, OTHER, 'POST', '/api/appointments', { ...NEW_APPT, service: 'split', participants: ['Олег', 'Мария'] });
+    expect(r.status).toBe(201);
+    expect(r.json.ids).toHaveLength(3);
+    const rows = (await list(OTHER, '2026-10-15')).json;
+    expect(rows.map((a: any) => a.client_name).sort()).toEqual(['Мария', 'Новый клиент', 'Олег']);
+    const news = messages().filter((m) => m.chat_id === OTHER && String(m.text).includes('Новая запись'));
+    expect(news).toHaveLength(1);
+    expect(String(news[0].text)).toContain('Новый клиент, Олег, Мария');
+  });
+
   it('админ меняет и переносит запись тренера', async () => {
     const [a] = (await list(OTHER)).json;
     const r = await apiAs(ADMIN2, OTHER, 'PUT', `/api/appointments/${a.id}`, { ...NEW_APPT, date: '2026-10-16', price: 900 });

@@ -638,6 +638,7 @@ function openForm(appt = null) {
   const conflictAlert = document.getElementById('conflict-alert');
 
   if (conflictAlert) conflictAlert.style.display = 'none';
+  resetParticipants();
 
   if (appt && appt.id) {
     if (formTitle) formTitle.textContent = 'Редактирование записи';
@@ -717,7 +718,58 @@ function updateServiceUI() {
   document.querySelectorAll('#service-selector .segment-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.service === selectedService);
   });
+  updateParticipantsUI();
 }
+
+// ===== Участники сплита и группы =====
+// Блок «Другие участники» нужен только при создании новой записи сплита или группы:
+// основной клиент вводится в поле «Имя клиента», остальные — здесь, каждому создаётся своя запись.
+function addParticipantRow(value = '') {
+  const list = document.getElementById('participants-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'participant-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'form-input participant-input';
+  input.placeholder = 'Имя участника';
+  input.maxLength = 100;
+  input.autocomplete = 'off';
+  input.setAttribute('list', 'clients-datalist');
+  input.value = value;
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'btn-clear';
+  remove.title = 'Убрать участника';
+  remove.textContent = '✕';
+  remove.addEventListener('click', () => row.remove());
+  row.append(input, remove);
+  list.appendChild(row);
+  return input;
+}
+
+function getParticipants() {
+  return [...document.querySelectorAll('#participants-list .participant-input')]
+    .map((el) => el.value.trim())
+    .filter(Boolean);
+}
+
+function updateParticipantsUI() {
+  const group = document.getElementById('participants-group');
+  if (!group) return;
+  const multi = selectedService === 'split' || selectedService === 'group';
+  group.style.display = multi && !state.editingAppointmentId ? 'block' : 'none';
+}
+
+function resetParticipants() {
+  const list = document.getElementById('participants-list');
+  if (list) list.innerHTML = '';
+}
+
+document.getElementById('btn-add-participant')?.addEventListener('click', () => {
+  haptic('light');
+  addParticipantRow()?.focus();
+});
 
 // Подстановка цены из прайса при смене услуги. Цену, которую тренер вписал вручную, не трогаем:
 // заменяем значение, только если поле пустое или там цена прежней услуги из прайса.
@@ -836,11 +888,14 @@ async function saveAppointment() {
       });
       showToast('Запись обновлена ✅');
     } else {
-      await api('/appointments', {
+      const participants = selectedService === 'split' || selectedService === 'group' ? getParticipants() : [];
+      if (participants.length) payload.participants = participants;
+      const res = await api('/appointments', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      showToast('Запись добавлена ✅');
+      const count = Array.isArray(res?.ids) ? res.ids.length : 1;
+      showToast(count > 1 ? `Добавлено записей: ${count} ✅` : 'Запись добавлена ✅');
     }
 
     haptic('success');

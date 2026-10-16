@@ -84,7 +84,7 @@ clients.put('/:id', async (c) => {
     if (!bday) return c.json({ error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' }, 400);
   }
 
-  const ok = await updateClient(c.env.DB, userId, id, {
+  const result = await updateClient(c.env.DB, userId, id, {
     name: name.slice(0, 100),
     phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
     telegram: body?.telegram ? String(body.telegram).trim().slice(0, 50) : null,
@@ -92,7 +92,8 @@ clients.put('/:id', async (c) => {
     birthday: bday,
   });
 
-  if (!ok) return c.json({ error: 'not found' }, 404);
+  if (result === 'not_found') return c.json({ error: 'not found' }, 404);
+  if (result === 'name_taken') return c.json({ error: 'Клиент с таким именем уже есть' }, 409);
   return c.json({ ok: true });
 });
 

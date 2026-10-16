@@ -76,22 +76,53 @@ appointments.post('/check', async (c) => {
   return c.json({ conflicts });
 });
 
-// POST /api/appointments — создать (пересечение не блокирует, возвращаем conflicts)
+/** Сколько дополнительных участников можно записать за раз (кроме основного клиента). */
+export const MAX_PARTICIPANTS = 20;
+
+/**
+ * Дополнительные участники сплита / группы: имена без пустых, лишних пробелов и повторов
+ * (без учёта регистра, в том числе повторов основного клиента). Возвращает [имена, ошибка].
+ */
+export function cleanParticipants(raw: unknown, mainName: string, service: Service): readonly [string[], null] | readonly [null, string] {
+  if (raw === undefined || raw === null) return [[], null];
+  if (!Array.isArray(raw)) return [null, 'Участники: ожидается список имён'];
+  const seen = new Set([mainName.toLowerCase()]);
+  const names: string[] = [];
+  for (const item of raw) {
+    const name = String(item ?? '').trim().replace(/\s+/g, ' ').slice(0, 100);
+    if (!name || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    names.push(name);
+  }
+  if (names.length && service !== 'split' && service !== 'group') {
+    return [null, 'Несколько участников можно указать только для сплита и группового занятия'];
+  }
+  if (names.length > MAX_PARTICIPANTS) return [null, `Не больше ${MAX_PARTICIPANTS} дополнительных участников`];
+  return [names, null];
+}
+
+// POST /api/appointments — создать (пересечение не блокирует, возвращаем conflicts).
+// Для сплита и группы можно передать participants: ['Иван', 'Мария'] — каждому участнику создаётся своя запись
+// на то же время (с тем же видом занятия, ценой, статусом и комментарием).
 appointments.post('/', async (c) => {
   const userId = c.get('userId');
-  const [d, err] = validate(await c.req.json().catch(() => null));
+  const body: any = await c.req.json().catch(() => null);
+  const [d, err] = validate(body);
   if (!d) return c.json({ error: err }, 400);
+  const [extra, extraErr] = cleanParticipants(body?.participants, d.client_name, d.service);
+  if (!extra) return c.json({ error: extraErr }, 400);
 
   const id = await insertAppointment(c.env.DB, userId, d);
   await ensureClientExists(c.env.DB, userId, d.client_name, d.who).catch(() => {});
-  const conflicts = await findConflicts(
-    c.env.DB,
-    userId,
-    d.date,
-    d.start_time,
-    d.end_time ?? addMinutes(d.start_time, 60),
-    id,
-  );
+  const ids = [id];
+  for (const name of extra) {
+    ids.push(await insertAppointment(c.env.DB, userId, { ...d, client_name: name }));
+    await ensureClientExists(c.env.DB, userId, name, d.who).catch(() => {});
+  }
+  // Записи той же группы друг другу не «конфликтуют»
+  const conflicts = (
+    await findConflicts(c.env.DB, userId, d.date, d.start_time, d.end_time ?? addMinutes(d.start_time, 60), id)
+  ).filter((x) => !ids.includes(x.id));
 
   // Уведомление тренера в Telegram о новой записи: только когда её добавил не он сам (администратор от его имени)
   // и если это включено в настройках. О своих записях тренер и так знает, лишние сообщения ему не нужны.
@@ -105,7 +136,7 @@ appointments.post('/', async (c) => {
     const [y, m, dNum] = d.date.split('-');
     const text =
       `🏋️ <b>Новая запись: ${dNum}.${m}.${y}</b>\n` +
-      `🕐 <b>${timeLabel(d)}</b> · ${escapeHtml(d.client_name)}${d.who ? ` (${escapeHtml(d.who)})` : ''}\n` +
+      `🕐 <b>${timeLabel(d)}</b> · ${[d.client_name, ...extra].map((n) => escapeHtml(n)).join(', ')}${d.who ? ` (${escapeHtml(d.who)})` : ''}\n` +
       `🏋️ ${serviceLabel(d)}` +
       (d.comment ? `\n💬 ${escapeHtml(d.comment)}` : '');
     const r = await sendMessage(c.env, userId, text);
@@ -120,7 +151,7 @@ appointments.post('/', async (c) => {
     await notify; // окружение без executionCtx (например, тесты)
   }
 
-  return c.json({ id, conflicts }, 201);
+  return c.json({ id, ids, conflicts }, 201);
 });
 
 // PUT /api/appointments/:id — изменить / перенести (меняется date и/или время)

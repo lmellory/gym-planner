@@ -14,7 +14,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/style.css?v=4">
+  <link rel="stylesheet" href="/style.css?v=5">
 </head>
 <body>
   <div id="app">
@@ -202,7 +202,7 @@
           <!-- Кто это / откуда человек -->
           <div class="form-group">
             <label for="form-appt-who">Кто это, откуда пришёл</label>
-            <input type="text" id="form-appt-who" class="form-input" placeholder="Например: из инсты, по рекомендации; для группы — участники" maxlength="200">
+            <input type="text" id="form-appt-who" class="form-input" placeholder="Например: из инсты, по рекомендации" maxlength="200">
           </div>
 
           <!-- Вид занятия -->
@@ -234,6 +234,14 @@
                 <span>Онлайн</span>
               </button>
             </div>
+          </div>
+
+          <!-- Другие участники сплита / группы (только для новой записи) -->
+          <div class="form-group" id="participants-group" style="display: none;">
+            <label>Другие участники</label>
+            <div id="participants-list"></div>
+            <button type="button" class="btn-secondary" id="btn-add-participant">➕ Добавить участника</button>
+            <small class="form-hint">Каждому участнику создастся своя запись на это же время.</small>
           </div>
 
           <!-- Цена -->
@@ -808,6 +816,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
 </body>
 </html>

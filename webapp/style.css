@@ -689,6 +689,15 @@ body {
   box-shadow: 0 0 0 3px var(--accent-pink-soft);
 }
 
+.participant-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.participant-row .form-input { flex: 1; }
+#btn-add-participant { margin-top: 2px; }
+
 .form-hint {
   display: block;
   font-size: 12px;
