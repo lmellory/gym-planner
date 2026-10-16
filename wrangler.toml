@@ -1,0 +1,37 @@
+name = "gym-planner"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Интерфейс Mini App (папка webapp/) раздаётся как статические файлы.
+# Запросы на /api/* и /webhook сначала попадают в Worker.
+[assets]
+directory = "./webapp"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/webhook"]
+
+# Cron каждую минуту: вечернее уведомление и удаление старых сообщений бота
+[triggers]
+crons = ["* * * * *"]
+
+# Логи Worker (console.log/error, ошибки cron) доступны в панели Cloudflare и через `wrangler tail`
+[observability]
+enabled = true
+
+[vars]
+TZ = "Europe/Chisinau"
+ENABLE_ID_COMMAND = "true"
+# Администраторы (Telegram ID через запятую; это не секрет, при желании можно хранить как секрет: wrangler secret put ADMIN_ID).
+# Им доступны команды бота (/admin) и админ-панель в Mini App: выбор тренера, добавление, правка и удаление его записей.
+# Администратору не нужно быть в ALLOWED_IDS.
+ADMIN_ID = "5067848442,352999678"
+# Наблюдатели (через запятую): только смотрят записи всех тренеров (/records, CSV для Excel), без правки. Сейчас пусто.
+VIEWER_IDS = ""
+TURSO_URL = "libsql://gymplanner-lmellory.aws-eu-west-1.turso.io"   # НОВАЯ база Turso для тренера, не база маникюрного бота
+# После первого деплоя впиши сюда адрес своего Worker (с https:// и слэшем в конце):
+APP_URL = "https://gym-planner.mellory.workers.dev"
+
+# Секреты (задаются через wrangler secret put):
+#   wrangler secret put BOT_TOKEN
+#   wrangler secret put ALLOWED_IDS
+#   wrangler secret put WEBHOOK_SECRET
+#   wrangler secret put TURSO_AUTH_TOKEN
