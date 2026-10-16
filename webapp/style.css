@@ -522,9 +522,40 @@ body {
 
 .appt-card-top {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
+  gap: 8px;
+}
+
+.appt-card-time-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.appt-card-top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appt-same-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--powder-200);
+  color: var(--powder-dark);
+}
+
+.dark-theme .appt-same-time-badge {
+  background: rgba(242, 112, 42, 0.22);
+  color: #ffb27f;
 }
 
 .appt-card-time {
@@ -685,17 +716,23 @@ body {
   grid-template-columns: 1fr 1fr;
 }
 
-/* Предупреждение о конфликте времени */
+/* Информация о других клиентах на то же время */
 .conflict-alert {
   display: flex;
   gap: 12px;
-  background: var(--warning-bg);
-  border: 1px solid var(--warning-border);
+  background: var(--powder-100);
+  border: 1px solid var(--powder-300);
   border-radius: var(--radius-md);
   padding: 12px 14px;
   margin-bottom: 18px;
-  color: var(--warning-text);
+  color: var(--text-color);
   animation: fadeIn 0.25s ease-out;
+}
+
+.dark-theme .conflict-alert {
+  background: rgba(242, 112, 42, 0.12);
+  border-color: rgba(242, 112, 42, 0.35);
+  color: var(--text-color);
 }
 
 .alert-icon {

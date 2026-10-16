@@ -501,10 +501,7 @@ async function loadFreeSlots(dateStr) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'slot-chip';
-      const h = Math.floor(slot.duration_minutes / 60);
-      const m = slot.duration_minutes % 60;
-      const durText = h > 0 ? (m > 0 ? `${h}ч ${m}м` : `${h}ч`) : `${m}м`;
-      btn.textContent = `✨ ${slot.start}–${slot.end} (${durText})`;
+      btn.textContent = `✨ ${slot.start}`;
       btn.addEventListener('click', () => {
         haptic('light');
         openForm({ date: dateStr, start_time: slot.start });
@@ -548,10 +545,18 @@ function renderAppointmentsList() {
       <div class="empty-state">
         <div class="empty-state-emoji">💪</div>
         <div class="empty-state-title">Записей нет</div>
-        <p>Нажмите «+» внизу экрана, чтобы добавить клиента</p>
+        <p>Нажмите «+» внизу экрана, чтобы записать клиента на тренировку</p>
       </div>
     `;
     return;
+  }
+
+  // Считаем активные записи на одно и то же время
+  const timeCounts = {};
+  for (const a of state.appointments) {
+    if (a.status === 'scheduled') {
+      timeCounts[a.start_time] = (timeCounts[a.start_time] || 0) + 1;
+    }
   }
 
   listEl.innerHTML = '';
@@ -561,18 +566,26 @@ function renderAppointmentsList() {
     card.setAttribute('data-id', a.id);
 
     const whoHtml = a.who ? `<span class="appt-card-who">${escapeHtml(a.who)}</span>` : '';
-
     const serviceName = serviceRu(a.service);
-
     const commentHtml = a.comment
       ? `<div class="appt-card-comment">💬 ${escapeHtml(a.comment)}</div>`
       : '';
 
+    const isSimultaneous = timeCounts[a.start_time] > 1 && a.status === 'scheduled';
+    const sameTimeBadge = isSimultaneous
+      ? `<span class="appt-same-time-badge" title="Несколько человек на одно время">👥 ${timeCounts[a.start_time]} чел.</span>`
+      : '';
+
     card.innerHTML = `
       <div class="appt-card-top">
-        <span class="appt-card-time">🕐 ${formatApptTime(a)}</span>
-        ${statusBadgeHtml(a)}
-        ${a.price != null ? `<span class="appt-card-price">${formatMoney(a.price)}</span>` : ''}
+        <div class="appt-card-time-group">
+          <span class="appt-card-time">🕐 ${formatApptTime(a)}</span>
+          ${sameTimeBadge}
+        </div>
+        <div class="appt-card-top-right">
+          ${statusBadgeHtml(a)}
+          ${a.price != null ? `<span class="appt-card-price">${formatMoney(a.price)}</span>` : ''}
+        </div>
       </div>
       <div class="appt-card-client">${escapeHtml(a.client_name)}</div>
       ${whoHtml}
@@ -762,9 +775,9 @@ async function checkConflicts() {
       });
 
       if (res.conflicts && res.conflicts.length > 0) {
-        haptic('warning');
+        // Информируем тренера, что на это время уже есть клиенты (без тревожного вибросигнала)
         const listStr = res.conflicts
-          .map((c) => `• <b>${formatApptTime(c)}</b>: ${escapeHtml(c.client_name)}`)
+          .map((c) => `• <b>${formatApptTime(c)}</b>: ${escapeHtml(c.client_name)} (${serviceRu(c.service)})`)
           .join('<br>');
         if (alertText) alertText.innerHTML = listStr;
         if (alertEl) alertEl.style.display = 'flex';
@@ -787,7 +800,7 @@ async function saveAppointment() {
   const comment = document.getElementById('form-appt-comment')?.value?.trim() || null;
 
   if (!date) return showToast('Укажите дату');
-  if (!start_time) return showToast('Укажите время приема');
+  if (!start_time) return showToast('Укажите время тренировки');
   if (!client_name) return showToast('Укажите имя клиента');
 
   const priceEl = document.getElementById('form-appt-price');
@@ -2000,7 +2013,7 @@ document.querySelectorAll('#income-period-selector .segment-btn').forEach((btn) 
 document.getElementById('btn-income-prev')?.addEventListener('click', () => { haptic('light'); shiftIncomeAnchor(-1); loadIncome(); });
 document.getElementById('btn-income-next')?.addEventListener('click', () => { haptic('light'); shiftIncomeAnchor(1); loadIncome(); });
 
-// ===== ТРАТЫ НА МАТЕРИАЛЫ =====
+// ===== ТРАТЫ =====
 let expenseNamesLoaded = false;
 
 async function loadExpenseNames() {

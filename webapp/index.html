@@ -135,10 +135,10 @@
           <p class="day-note-content" id="day-note-content"></p>
         </div>
 
-        <!-- Свободные окна дня -->
+        <!-- Свободное время дня -->
         <div class="free-slots-card" id="free-slots-card" style="display: none;">
           <div class="free-slots-header">
-            <span class="free-slots-title">✨ Свободные окна:</span>
+            <span class="free-slots-title">✨ Свободное время:</span>
             <span class="free-slots-badge" id="free-slots-count"></span>
           </div>
           <div class="free-slots-chips" id="free-slots-chips"></div>
@@ -166,13 +166,13 @@
           <h2 id="form-screen-title">Новая запись</h2>
         </div>
 
-        <!-- Предупреждение о пересечении по времени -->
+        <!-- Информация о других клиентах на то же время -->
         <div class="conflict-alert" id="conflict-alert" style="display: none;">
-          <div class="alert-icon">⚠️</div>
+          <div class="alert-icon">👥</div>
           <div class="alert-body">
-            <strong>Внимание! Пересечение по времени:</strong>
+            <strong id="conflict-alert-title">В это время уже есть запись:</strong>
             <div id="conflict-alert-text"></div>
-            <small>Вы всё равно можете сохранить запись при необходимости.</small>
+            <small>На одно время можно записывать сразу нескольких клиентов</small>
           </div>
         </div>
 
@@ -185,9 +185,9 @@
             <input type="date" id="form-appt-date" class="form-input" required>
           </div>
 
-          <!-- Время приема -->
+          <!-- Время тренировки -->
           <div class="form-group">
-            <label for="form-appt-start">Время приема *</label>
+            <label for="form-appt-start">Время тренировки *</label>
             <input type="time" id="form-appt-start" class="form-input time-single-input" required>
           </div>
 
