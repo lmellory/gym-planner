@@ -1,6 +1,5 @@
 // Обработка апдейтов Telegram (webhook). Команды: /start /menu /today /tomorrow /notify /id; для администратора ещё
-// /admin /users /user /stats /health /export /records /backupall /send /broadcast (см. admin.ts);
-// наблюдателю (VIEWER_IDS) доступны только /admin и /records
+// /admin /users /user /stats /health /export /records /backupall /send /broadcast /adduser /ban /unban (см. admin.ts)
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { isAllowedUser } from '../lib/access';
@@ -8,7 +7,7 @@ import { ensureUser, getDayNote, listAppointments } from '../db';
 import { addDays, nowInTz } from '../lib/time';
 import { formatDay } from '../lib/format';
 import { openAppKeyboard, sendMessage } from './telegram';
-import { handleAdminCommand, isAdmin, isAdminCommand, isViewer, isViewerCommand } from './admin';
+import { handleAdminCommand, isAdmin, isAdminCommand } from './admin';
 
 export const webhook = new Hono<{ Bindings: Env }>();
 
@@ -24,7 +23,7 @@ const WELCOME =
   `• Точки под числами показывают количество записей.\n` +
   `• Иконка 📅 в правом верхнем углу открывает большой календарь на 3 года вперёд.\n\n` +
   `📝 <b>Заметки на день:</b>\n` +
-  `Кнопка «Заметка» вверху списка сохраняет напоминания на день (программа, задачи). Заметка сразу дублируется сюда в чат, а в календаре появится значок 📝.\n\n` +
+  `Кнопка «Заметка» вверху списка сохраняет напоминания на день (программа, задачи), а в календаре появится значок 📝. В ⚙️ настройках можно включить дублирование заметки сюда в чат.\n\n` +
   `🌙 <b>Вечерние напоминания:</b>\n` +
   `Каждый вечер в заданное время (по умолчанию 22:00) бот сам присылает сюда расписание на завтра со ссылками на клиентов. Время и вкл/выкл настраиваются в ⚙️.\n\n` +
   `💰 <b>Доходы:</b>\n` +
@@ -68,12 +67,10 @@ webhook.post('/', async (c) => {
       return c.text('ok');
     }
 
-    // Команды администратора (ADMIN_ID) и наблюдателей (VIEWER_IDS, только /admin и /records).
-    // Всем остальным бот на них молчит, как и чужим.
+    // Команды администратора (ADMIN_ID). Всем остальным бот на них молчит, как и чужим.
     if (isAdminCommand(cmd)) {
-      const role = isAdmin(c.env, userId) ? 'admin' : isViewer(c.env, userId) && isViewerCommand(cmd) ? 'viewer' : null;
       // аргументы — всё после команды (в том числе после суффикса «@бот»)
-      if (role) await handleAdminCommand(c.env, msg.chat.id, userId, cmd, text.replace(/^\S+\s*/, ''), role);
+      if (isAdmin(c.env, userId)) await handleAdminCommand(c.env, msg.chat.id, userId, cmd, text.replace(/^\S+\s*/, ''));
       return c.text('ok');
     }
 

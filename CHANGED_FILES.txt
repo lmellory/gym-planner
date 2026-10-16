@@ -1,0 +1,31 @@
+Измененные файлы (A — новый, M — изменён). Пути внутри архива совпадают с путями в репозитории.
+
+новый   migrations/0016_settings_extra.sql
+изменён  src/api/admin.ts
+изменён  src/api/appointments.ts
+изменён  src/api/export.ts
+изменён  src/api/notes.ts
+изменён  src/api/settings.ts
+изменён  src/api/stats.ts
+изменён  src/bot/admin.ts
+изменён  src/bot/webhook.ts
+изменён  src/cron.ts
+изменён  src/db.ts
+изменён  src/lib/backup.ts
+изменён  src/lib/restore.ts
+новый   src/lib/settings.ts
+изменён  src/lib/stats.ts
+изменён  src/types.ts
+изменён  test/admin-panel.test.ts
+изменён  test/admin.test.ts
+изменён  test/api.test.ts
+изменён  test/csv.test.ts
+изменён  test/expenses.test.ts
+изменён  test/helpers/harness.ts
+изменён  test/restore.test.ts
+изменён  test/stats.test.ts
+изменён  test/ui.test.ts
+изменён  webapp/app.js
+изменён  webapp/index.html
+изменён  webapp/style.css
+изменён  wrangler.toml

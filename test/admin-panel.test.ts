@@ -96,7 +96,7 @@ describe('чистые функции', () => {
       expect(actAsAllowed('POST', p)).toBe(false);
       expect(actAsAllowed('DELETE', p)).toBe(false);
     }
-    for (const p of ['/api/stats', '/api/expenses', '/api/export/csv', '/api/import', '/api/admin/masters', '/api/me', '/api/appointmentsX']) {
+    for (const p of ['/api/stats', '/api/expenses', '/api/export/csv', '/api/import', '/api/admin/trainers', '/api/me', '/api/appointmentsX']) {
       expect(actAsAllowed('GET', p)).toBe(false);
     }
   });
@@ -119,20 +119,20 @@ describe('/api/me и список тренеров', () => {
     expect((await api(env, null, 'GET', '/api/me')).status).toBe(403);
   });
 
-  it('/api/admin/masters: только администраторам; тренера с числом записей', async () => {
-    expect((await apiAs(OTHER, null, 'GET', '/api/admin/masters')).status).toBe(403);
-    expect((await apiAs(STRANGER, null, 'GET', '/api/admin/masters')).status).toBe(403);
-    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/masters');
+  it('/api/admin/trainers: только администраторам; тренера с числом записей', async () => {
+    expect((await apiAs(OTHER, null, 'GET', '/api/admin/trainers')).status).toBe(403);
+    expect((await apiAs(STRANGER, null, 'GET', '/api/admin/trainers')).status).toBe(403);
+    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/trainers');
     expect(r.status).toBe(200);
-    expect(r.json.masters.map((m: any) => m.user_id)).toEqual([OWNER, OTHER]); // сам ADMIN2 тренером не считается
-    expect(r.json.masters[0]).toMatchObject({ appointments: 1, upcoming: 1, has_access: true, banned: false, name: null });
+    expect(r.json.trainers.map((m: any) => m.user_id)).toEqual([OWNER, OTHER]); // сам ADMIN2 тренером не считается
+    expect(r.json.trainers[0]).toMatchObject({ appointments: 1, upcoming: 1, has_access: true, banned: false, name: null });
   });
 
   it('имя тренера запоминается при открытии приложения и появляется в списке', async () => {
     await apiAs(OTHER, null, 'GET', '/api/me'); // в подписанных данных тестов first_name = «Test»
-    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/masters');
-    expect(r.json.masters.find((m: any) => m.user_id === OTHER).name).toBe('Test');
-    expect(r.json.masters.find((m: any) => m.user_id === OWNER).name).toBeNull();
+    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/trainers');
+    expect(r.json.trainers.find((m: any) => m.user_id === OTHER).name).toBe('Test');
+    expect(r.json.trainers.find((m: any) => m.user_id === OWNER).name).toBeNull();
   });
 
   it('открытие приложения администратором не создаёт ему запись тренера', async () => {
@@ -143,8 +143,8 @@ describe('/api/me и список тренеров', () => {
 
   it('тренер из ALLOWED_IDS, который ещё не открывал бота, тоже в списке', async () => {
     env.ALLOWED_IDS = `${OWNER},${OTHER},444`;
-    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/masters');
-    expect(r.json.masters.find((m: any) => m.user_id === 444)).toMatchObject({ appointments: 0, has_access: true });
+    const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/trainers');
+    expect(r.json.trainers.find((m: any) => m.user_id === 444)).toMatchObject({ appointments: 0, has_access: true });
   });
 });
 
@@ -221,7 +221,7 @@ describe('правка записей за тренера (X-Act-As)', () => {
       ['PUT', '/api/notes/2026-10-14', { text: 'x' }],
       ['POST', '/api/import', {}],
       ['GET', '/api/export/csv'],
-      ['GET', '/api/admin/masters'],
+      ['GET', '/api/admin/trainers'],
       ['GET', '/api/me'],
     ];
     for (const [method, url, body] of blocked) {
@@ -334,8 +334,8 @@ describe('/adduser, /ban, /unban', () => {
     await hook(OWNER, '/users');
     expect(messages()[0].text).toContain(`🚫 <code>${OTHER}</code>`);
     tg.length = 0;
-    const masters = (await apiAs(ADMIN2, null, 'GET', '/api/admin/masters')).json.masters;
-    expect(masters.find((m: any) => m.user_id === OTHER)).toMatchObject({ banned: true, has_access: false });
+    const trainers = (await apiAs(ADMIN2, null, 'GET', '/api/admin/trainers')).json.trainers;
+    expect(trainers.find((m: any) => m.user_id === OTHER)).toMatchObject({ banned: true, has_access: false });
     await hook(OWNER, '/broadcast привет');
     expect(messages().map((m) => m.chat_id)).toEqual([OWNER, OWNER]);
     expect(messages()[1].text).toContain('доставлено 1 из 1');

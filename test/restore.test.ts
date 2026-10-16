@@ -128,7 +128,7 @@ describe('sanitizeBackup: «строго по форме, лениво по ме
         { date: '2026-10-11', start_time: '10:00', client_name: 'Странная услуга', service: 'hairdo', status: 'weird', price: 12.5, end_time: '09:00' },
       ],
       clients: [{ name: 'Анна' }, { name: 'Анна' }, { name: '' }],
-      expenses: [{ date: '2026-10-10', name: 'гель', amount: 100 }, { date: '2026-10-10', name: 'Нулевая', amount: 0 }],
+      expenses: [{ date: '2026-10-10', name: 'аренда', amount: 100 }, { date: '2026-10-10', name: 'Нулевая', amount: 0 }],
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;

@@ -28,7 +28,7 @@ stats.get('/', async (c) => {
   const { from, to } = periodRange(period, date);
   const prev = previousRange(period, date);
   // В доход идут только состоявшиеся записи (живые, время начала уже прошло); будущие — «ожидается»
-  const [rows, prevRows, expRows, prevExpRows, materials, expected, counts] = await Promise.all([
+  const [rows, prevRows, expRows, prevExpRows, expenseItems, expected, counts] = await Promise.all([
     getIncomeByDay(c.env.DB, userId, from, to, now.date, now.time),
     getIncomeByDay(c.env.DB, userId, prev.from, prev.to, now.date, now.time),
     getExpensesByDay(c.env.DB, userId, from, to),
@@ -38,7 +38,7 @@ stats.get('/', async (c) => {
     getStatusCounts(c.env.DB, userId, from, to),
   ]);
   return c.json(
-    buildIncomeReport(period, from, to, rows, prevRows, expRows, prevExpRows, materials, {
+    buildIncomeReport(period, from, to, rows, prevRows, expRows, prevExpRows, expenseItems, {
       expected: expected.sum,
       expected_count: expected.count,
       no_show: counts.no_show ?? 0,

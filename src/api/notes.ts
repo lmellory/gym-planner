@@ -1,10 +1,11 @@
-// Заметки к дню (необязательные) + уведомление в Telegram
+// Заметки к дню (необязательные); по желанию тренера дублируются сообщением в Telegram (настройка notify_note)
 import { Hono } from 'hono';
 import type { AppVars, Env } from '../types';
 import { isDate, weekdayRu } from '../lib/time';
 import {
   NEW_APPT_MSG_TTL_SEC,
   deleteDayNote,
+  ensureUser,
   getDayNote,
   scheduleMessageDelete,
   upsertDayNote,
@@ -35,8 +36,9 @@ notes.put('/:date', async (c) => {
   const previous = await getDayNote(c.env.DB, uid, date);
   await upsertDayNote(c.env.DB, uid, date, text);
 
-  // Дублируем в чат Telegram только если текст действительно изменился (без спама при повторном сохранении)
-  if (text !== previous) {
+  // Дублируем в чат Telegram, только если это включено в настройках и текст действительно изменился (без спама при повторном сохранении)
+  const u = await ensureUser(c.env.DB, uid, c.env.TZ);
+  if (u.notify_note && text !== previous) {
     const [y, m, d] = date.split('-');
     const msg = `📝 <b>Заметка на ${d}.${m}.${y} (${weekdayRu(date)}):</b>\n\n${escapeHtml(text)}`;
     const notify = (async () => {

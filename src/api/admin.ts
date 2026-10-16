@@ -1,7 +1,7 @@
 // API админ-панели Mini App.
 //   GET /api/me            — кто я: ID и признак администратора (приложение по нему показывает кнопку панели);
 //                            заодно запоминает имя тренера из подписанных данных Telegram.
-//   GET /api/admin/masters — список тренеров с числом записей (только для администраторов).
+//   GET /api/admin/trainers — список тренеров с числом записей (только для администраторов).
 // Сами записи админ правит обычными маршрутами /api/appointments с заголовком X-Act-As (см. auth.ts).
 import { Hono } from 'hono';
 import type { AppVars, Env } from '../types';
@@ -27,7 +27,7 @@ adminApi.use('*', async (c, next) => {
   await next();
 });
 
-export interface MasterRow {
+export interface TrainerRow {
   user_id: number;
   name: string | null;
   username: string | null;
@@ -39,7 +39,7 @@ export interface MasterRow {
   banned: boolean;
 }
 
-adminApi.get('/masters', async (c) => {
+adminApi.get('/trainers', async (c) => {
   const { date } = nowInTz(c.env.TZ);
   const [rows, access, names] = await Promise.all([
     listUsersAdmin(c.env.DB, date),
@@ -47,14 +47,14 @@ adminApi.get('/masters', async (c) => {
     getUserNames(c.env.DB).catch(() => new Map<number, { name: string | null; username: string | null }>()),
   ]);
 
-  const masters: MasterRow[] = [];
+  const trainers: TrainerRow[] = [];
   const seen = new Set<number>();
   const push = (id: number, r?: (typeof rows)[number]) => {
     seen.add(id);
     const hasAccess = access.allowed.includes(id);
     // Администратор без доступа тренера и без записей — не тренер (просто открывал приложение)
     if (isAdmin(c.env, id) && !hasAccess && !(r && r.appointments > 0)) return;
-    masters.push({
+    trainers.push({
       user_id: id,
       name: names.get(id)?.name ?? null,
       username: names.get(id)?.username ?? null,
@@ -69,6 +69,6 @@ adminApi.get('/masters', async (c) => {
   for (const r of rows) push(r.user_id, r);
   for (const id of access.allowed) if (!seen.has(id)) push(id); // есть доступ, но ещё не открывали бота
 
-  masters.sort((a, b) => Number(b.has_access) - Number(a.has_access) || (a.name ?? '￿').localeCompare(b.name ?? '￿', 'ru') || a.user_id - b.user_id);
-  return c.json({ masters });
+  trainers.sort((a, b) => Number(b.has_access) - Number(a.has_access) || (a.name ?? '￿').localeCompare(b.name ?? '￿', 'ru') || a.user_id - b.user_id);
+  return c.json({ trainers });
 });

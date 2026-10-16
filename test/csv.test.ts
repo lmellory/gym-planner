@@ -62,20 +62,20 @@ describe('buildFinanceCsv', () => {
     id: 1, user_id: 1, date: '2026-10-05', start_time: '10:00', end_time: null, client_name: 'Инна',
     who: null, service: 'personal', comment: null, price: 800, ...o,
   });
-  const exp = (o: any): any => ({ id: 1, user_id: 1, date: '2026-10-05', name: 'Гель-лак', amount: 450, ...o });
+  const exp = (o: any): any => ({ id: 1, user_id: 1, date: '2026-10-05', name: 'Аренда зала', amount: 450, ...o });
   const lines = (csv: string) => csv.replace('\uFEFF', '').split('\r\n');
 
   it('строки: доходы и траты по датам (в день доход раньше траты), затем итоги', () => {
     const csv = buildFinanceCsv(
       [appt({ date: '2026-10-07', client_name: 'Мария', service: 'group', price: 1200 }), appt({})],
-      [exp({ date: '2026-10-05' }), exp({ id: 2, date: '2026-10-06', name: 'Пилки', amount: 150 })],
+      [exp({ date: '2026-10-05' }), exp({ id: 2, date: '2026-10-06', name: 'Инвентарь', amount: 150 })],
     );
     const l = lines(csv);
     expect(l[0]).toBe('тип;дата;описание;категория;сумма');
     expect(l.slice(1, 5)).toEqual([
       'доход;2026-10-05;Инна;персональная тренировка;800',
-      'трата;2026-10-05;Гель-лак;расходы;450',
-      'трата;2026-10-06;Пилки;расходы;150',
+      'трата;2026-10-05;Аренда зала;расходы;450',
+      'трата;2026-10-06;Инвентарь;расходы;150',
       'доход;2026-10-07;Мария;групповое занятие;1200',
     ]);
     expect(l).toContain('итого доход;;;;2000');
@@ -97,11 +97,11 @@ describe('buildFinanceCsv', () => {
 
   it('траты по статьям: одинаковые названия суммируются, большие сверху', () => {
     const l = lines(buildFinanceCsv([], [
-      exp({ name: 'Пилки', amount: 100 }), exp({ id: 2, name: 'Гель-лак', amount: 450 }),
-      exp({ id: 3, name: 'Гель-лак', amount: 550 }),
+      exp({ name: 'Инвентарь', amount: 100 }), exp({ id: 2, name: 'Аренда зала', amount: 450 }),
+      exp({ id: 3, name: 'Аренда зала', amount: 550 }),
     ]));
     const i = l.indexOf('траты по статьям;;;покупок;сумма');
-    expect(l.slice(i + 1)).toEqual(['статья;;Гель-лак;2;1000', 'статья;;Пилки;1;100']);
+    expect(l.slice(i + 1)).toEqual(['статья;;Аренда зала;2;1000', 'статья;;Инвентарь;1;100']);
   });
 
   it('защита от CSV-инъекции в именах и названиях', () => {

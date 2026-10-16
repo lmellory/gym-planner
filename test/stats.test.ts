@@ -121,16 +121,16 @@ describe('траты и прибыль', () => {
       [],
       [{ date: '2026-10-03', sum: 1200, count: 2 }, { date: '2026-10-20', sum: 800, count: 1 }],
       [{ date: '2026-09-10', sum: 1500, count: 3 }],
-      [{ name: 'Гель-лак', sum: 1500, count: 2 }, { name: 'Пилки', sum: 500, count: 1 }],
+      [{ name: 'Аренда зала', sum: 1500, count: 2 }, { name: 'Инвентарь', sum: 500, count: 1 }],
     );
     expect(r).toMatchObject({ total: 5000, total_expense: 2000, expense_count: 3, prev_expense: 1500, profit: 3000 });
-    expect(r.materials).toEqual([{ name: 'Гель-лак', sum: 1500, count: 2 }, { name: 'Пилки', sum: 500, count: 1 }]);
+    expect(r.expense_items).toEqual([{ name: 'Аренда зала', sum: 1500, count: 2 }, { name: 'Инвентарь', sum: 500, count: 1 }]);
   });
 
   it('траты больше дохода → отрицательная прибыль; без трат всё по нулям', () => {
     const loss = buildIncomeReport('week', '2026-10-05', '2026-10-11', [], [], [{ date: '2026-10-05', sum: 700, count: 1 }]);
     expect(loss.profit).toBe(-700);
     const none = buildIncomeReport('week', '2026-10-05', '2026-10-11', [], []);
-    expect(none).toMatchObject({ total_expense: 0, profit: 0, prev_expense: 0, materials: [] });
+    expect(none).toMatchObject({ total_expense: 0, profit: 0, prev_expense: 0, expense_items: [] });
   });
 });

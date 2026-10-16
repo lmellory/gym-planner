@@ -5,7 +5,6 @@ export interface Env {
   BOT_TOKEN: string;       // secret
   ALLOWED_IDS: string;     // secret: "123,456"
   ADMIN_ID?: string;       // Telegram ID администраторов через запятую (wrangler.toml [vars]): команды бота и админ-панель Mini App
-  VIEWER_IDS?: string;     // Telegram ID наблюдателей через запятую (wrangler.toml [vars]): только /records, без правки и без остальных команд
   WEBHOOK_SECRET: string;  // secret
   TZ: string;              // wrangler.toml [vars]
   ENABLE_ID_COMMAND?: string;
@@ -54,6 +53,12 @@ export interface UserRow {
   last_birthday_notify_date?: string | null;
   backup_enabled?: number;          // 1 — присылать еженедельную копию (по умолчанию)
   last_backup_date?: string | null; // дата воскресного «слота», за который копия отправлена
+  notify_note?: number;             // 1 — дублировать заметку дня в чат Telegram (по умолчанию 0)
+  currency?: string | null;         // подпись валюты в приложении; null — по умолчанию
+  birthday_time?: string;           // '10:00': во сколько присылать поздравление с днём рождения клиента
+  backup_time?: string;             // '21:00': во сколько по воскресеньям присылать копию
+  notify_summary?: number;          // 1 — присылать воскресную сводку недели (по умолчанию)
+  last_summary_date?: string | null; // дата воскресенья, за которое сводка уже отправлена
 }
 
 export interface Client {

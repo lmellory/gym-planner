@@ -88,12 +88,12 @@ describe('экран «Доходы»', () => {
   });
 
   it('траты по материалам — по отдельности, названия не исполняются как HTML', () => {
-    const rows = $$('#income-materials .material-row').map((r) => r.textContent.replace(/\s+/g, ' ').trim());
+    const rows = $$('#income-articles .article-row').map((r) => r.textContent.replace(/\s+/g, ' ').trim());
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain('Гель-лак');
+    expect(rows[0]).toContain('Аренда зала');
     expect(rows[0]).toContain('2×');
     expect(rows[0]).toContain('750');
-    expect(rows[1]).toContain('Пилки');
+    expect(rows[1]).toContain('Инвентарь');
   });
 
   it('диаграмма: тап по столбику, переключатель «Траты», смена периода', async () => {

@@ -199,7 +199,7 @@ export async function runBirthdayNotifications(env: Env, appUrl: string) {
       const now = nowInTz(u.tz || env.TZ);
       const previousBdayDate = u.last_birthday_notify_date ?? null;
 
-      if (!birthdayDecision(now.date, now.time, previousBdayDate)) continue;
+      if (!birthdayDecision(now.date, now.time, previousBdayDate, u.birthday_time || BIRTHDAY_NOTIFY_TIME)) continue;
 
       // Атомарно бронируем отправку за сегодняшнюю дату
       const claim = await env.DB
@@ -253,9 +253,10 @@ export function backupDecision(
   nowDate: string,
   nowTime: string,
   lastBackupDate: string | null,
+  backupTime = BACKUP_TIME,
 ): { send: boolean; slot: string } {
   const dow = new Date(nowDate + 'T00:00:00Z').getUTCDay(); // 0 = воскресенье
-  const daysBack = dow === 0 ? (nowTime >= BACKUP_TIME ? 0 : 7) : dow;
+  const daysBack = dow === 0 ? (nowTime >= backupTime ? 0 : 7) : dow;
   const slot = addDays(nowDate, -daysBack);
   return { send: lastBackupDate !== slot, slot };
 }
@@ -268,7 +269,7 @@ export async function runWeeklyBackups(env: Env) {
 
       const now = nowInTz(u.tz || env.TZ);
       const previous = u.last_backup_date ?? null;
-      const { send, slot } = backupDecision(now.date, now.time, previous);
+      const { send, slot } = backupDecision(now.date, now.time, previous, u.backup_time || BACKUP_TIME);
       if (!send) continue;
 
       const claim = await env.DB
