@@ -490,6 +490,21 @@ body {
   color: var(--hint-color);
 }
 
+.empty-state-img {
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  margin: 0 auto 12px;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(242, 112, 42, 0.25));
+  animation: floatSlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatSlow {
+  from { transform: translateY(0); }
+  to { transform: translateY(-6px); }
+}
+
 .empty-state-emoji {
   font-size: 38px;
   margin-bottom: 8px;
@@ -586,10 +601,18 @@ body {
 .appt-card-service {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   color: var(--text-color);
   margin-bottom: 4px;
+}
+
+.appt-service-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .appt-card-comment {
@@ -693,15 +716,27 @@ body {
 
 .segment-btn {
   flex: 1;
-  padding: 10px 4px;
+  padding: 10px 6px;
   border: none;
   background: transparent;
   color: var(--text-color);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   border-radius: calc(var(--radius-md) - 3px);
   cursor: pointer;
   transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.segment-btn-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .segment-btn.active {

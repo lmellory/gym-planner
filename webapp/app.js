@@ -543,7 +543,7 @@ function renderAppointmentsList() {
   if (!state.appointments.length) {
     listEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-emoji">💪</div>
+        <img src="/assets/empty-workout.png" class="empty-state-img" alt="">
         <div class="empty-state-title">Записей нет</div>
         <p>Нажмите «+» внизу экрана, чтобы записать клиента на тренировку</p>
       </div>
@@ -589,7 +589,10 @@ function renderAppointmentsList() {
       </div>
       <div class="appt-card-client">${escapeHtml(a.client_name)}</div>
       ${whoHtml}
-      <div class="appt-card-service">🏋️ <strong>${serviceName}</strong></div>
+      <div class="appt-card-service">
+        <img src="/assets/service-${a.service}.png" class="appt-service-icon" alt="">
+        <strong>${serviceName}</strong>
+      </div>
       ${commentHtml}
     `;
 
@@ -1085,7 +1088,7 @@ function renderSearchResults(items) {
   if (!items || !items.length) {
     resultsEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-emoji">🔍</div>
+        <img src="/assets/empty-clients.png" class="empty-state-img" alt="">
         <div class="empty-state-title">Ничего не найдено</div>
         <p>Попробуйте другое имя или часть слова</p>
       </div>
@@ -1492,7 +1495,7 @@ function renderClientsList(items) {
   if (!items || !items.length) {
     listEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-emoji">👥</div>
+        <img src="/assets/empty-clients.png" class="empty-state-img" alt="">
         <div class="empty-state-title">Клиентов пока нет</div>
         <p>Нажмите «+ Новый», чтобы добавить клиента в базу</p>
       </div>
