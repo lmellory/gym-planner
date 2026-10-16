@@ -135,7 +135,7 @@ describe('sanitizeBackup: «строго по форме, лениво по ме
     expect(r.report).toMatchObject({ appointments: { ok: 2, skipped: 3 }, clients: { ok: 1, skipped: 2 }, expenses: { ok: 1, skipped: 1 } });
     // «странная» запись чинится, а не теряется
     expect(r.data.appointments[1]).toMatchObject({ service: 'personal', status: 'scheduled', price: null, end_time: null });
-    expect(r.data.expenses[0].name).toBe('Гель');
+    expect(r.data.expenses[0].name).toBe('Аренда');
   });
 
   it('настройки: применяются только корректные поля', () => {
