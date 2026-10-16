@@ -18,8 +18,8 @@ describe('parseAmount', () => {
 
 describe('normalizeName', () => {
   it('схлопывает пробелы, делает первую букву заглавной', () => {
-    expect(normalizeName('  гель   лак  ')).toBe('Гель лак');
-    expect(normalizeName('Пилки')).toBe('Пилки');
+    expect(normalizeName('  аренда   зала  ')).toBe('Аренда зала');
+    expect(normalizeName('Инвентарь')).toBe('Инвентарь');
   });
   it('пустое и пробелы → пустая строка, длинное обрезается до 100', () => {
     expect(normalizeName('   ')).toBe('');
@@ -32,12 +32,12 @@ describe('normalizeName', () => {
 });
 
 describe('validateExpense', () => {
-  const ok = { date: '2026-10-10', name: 'гель-лак', amount: 450 };
+  const ok = { date: '2026-10-10', name: 'аренда зала', amount: 450 };
 
   it('валидная трата нормализуется', () => {
     const [d, err] = validateExpense(ok);
     expect(err).toBeNull();
-    expect(d).toEqual({ date: '2026-10-10', name: 'Гель-лак', amount: 450 });
+    expect(d).toEqual({ date: '2026-10-10', name: 'Аренда зала', amount: 450 });
   });
   it('сумма строкой с пробелами', () => {
     expect(validateExpense({ ...ok, amount: '1 200' })[0]?.amount).toBe(1200);

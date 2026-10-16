@@ -168,7 +168,7 @@ export function buildFinanceCsv(appointments: Appointment[], expenses: Expense[]
     m.count += 1;
     byName.set(e.name, m);
   }
-  const materials = [...byName.entries()].sort((a, b) => b[1].sum - a[1].sum || a[0].localeCompare(b[0], 'ru'));
+  const byArticle = [...byName.entries()].sort((a, b) => b[1].sum - a[1].sum || a[0].localeCompare(b[0], 'ru'));
 
   const line = (cells: Array<string | number>) => cells.map(cell).join(';');
   const lines = [
@@ -181,7 +181,7 @@ export function buildFinanceCsv(appointments: Appointment[], expenses: Expense[]
     ...(unpaid > 0 ? [line(['записей без цены (не учтены)', '', '', '', unpaid])] : []),
     '',
     line(['траты по статьям', '', '', 'покупок', 'сумма']),
-    ...materials.map(([name, m]) => line(['статья', '', name, m.count, m.sum])),
+    ...byArticle.map(([name, m]) => line(['статья', '', name, m.count, m.sum])),
   ];
   return '\uFEFF' + lines.join('\r\n');
 }

@@ -19,8 +19,8 @@ export interface ExpenseDayRow {
   count: number;
 }
 
-/** Траты по одному материалу за период. */
-export interface MaterialRow {
+/** Траты по одной статье (названию) за период. */
+export interface ExpenseNameRow {
   name: string;
   sum: number;
   count: number;
@@ -33,7 +33,7 @@ export interface Bucket {
   sum: number;    // доход
   paid: number;
   unpaid: number;
-  expense: number; // траты на материалы
+  expense: number; // траты
   expense_count: number;
 }
 
@@ -51,7 +51,7 @@ export interface IncomeReport {
   expense_count: number;
   prev_expense: number;
   profit: number;     // доход минус траты
-  materials: MaterialRow[]; // траты по материалам, самые большие сверху
+  expense_items: ExpenseNameRow[]; // траты по статьям, самые большие сверху
   expected: number;       // ожидаемый доход: будущие записи с ценой
   expected_count: number;
   no_show: number;        // записей «не пришёл» в периоде
@@ -139,7 +139,7 @@ export function buildIncomeReport(
   prevRows: DayRow[],
   expenseRows: ExpenseDayRow[] = [],
   prevExpenseRows: ExpenseDayRow[] = [],
-  materials: MaterialRow[] = [],
+  expenseItems: ExpenseNameRow[] = [],
   extras: Partial<IncomeExtras> = {},
 ): IncomeReport {
   const buckets = buildBuckets(period, from, to, rows, expenseRows);
@@ -156,7 +156,7 @@ export function buildIncomeReport(
     prev_total,
     total_expense, expense_count, prev_expense,
     profit: total - total_expense,
-    materials: materials.map((m) => ({ name: m.name, sum: Number(m.sum) || 0, count: Number(m.count) || 0 })),
+    expense_items: expenseItems.map((m) => ({ name: m.name, sum: Number(m.sum) || 0, count: Number(m.count) || 0 })),
     expected: extras.expected ?? 0,
     expected_count: extras.expected_count ?? 0,
     no_show: extras.no_show ?? 0,

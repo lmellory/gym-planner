@@ -6,6 +6,7 @@ import { BACKUP_FORMAT, BACKUP_VERSION } from './backup';
 import { parseAmount } from './money';
 import { SERVICES } from './services';
 import { isStatus } from './status';
+import { cleanCurrency } from './settings';
 import { normalizeName } from './text';
 import { isDate, isTime } from './time';
 import { ensureUser, updateUserSettings } from '../db';
@@ -21,7 +22,9 @@ export interface RestoreClient { name: string; phone: string | null; telegram: s
 export interface RestoreExpense { date: string; name: string; amount: number }
 export interface RestoreSettings {
   notify_enabled?: boolean; notify_time?: string; tz?: string; notify_new_appt?: boolean;
+  notify_note?: boolean; notify_summary?: boolean;
   work_start_time?: string; work_end_time?: string; work_days?: string; backup_enabled?: boolean;
+  currency?: string | null; birthday_time?: string; backup_time?: string;
 }
 export interface RestoreData {
   appointments: RestoreAppointment[];
@@ -73,7 +76,15 @@ function sanitizeSettings(s: any): RestoreSettings {
   if (typeof s.notify_enabled === 'boolean') out.notify_enabled = s.notify_enabled;
   if (typeof s.notify_new_appt === 'boolean') out.notify_new_appt = s.notify_new_appt;
   if (typeof s.backup_enabled === 'boolean') out.backup_enabled = s.backup_enabled;
+  if (typeof s.notify_note === 'boolean') out.notify_note = s.notify_note;
+  if (typeof s.notify_summary === 'boolean') out.notify_summary = s.notify_summary;
   if (isTime(s.notify_time)) out.notify_time = s.notify_time;
+  if (isTime(s.birthday_time)) out.birthday_time = s.birthday_time;
+  if (isTime(s.backup_time)) out.backup_time = s.backup_time;
+  if (typeof s.currency === 'string') {
+    const cur = cleanCurrency(s.currency);
+    if (cur) out.currency = cur;
+  }
   if (isTime(s.work_start_time) && isTime(s.work_end_time) && s.work_end_time > s.work_start_time) {
     out.work_start_time = s.work_start_time;
     out.work_end_time = s.work_end_time;

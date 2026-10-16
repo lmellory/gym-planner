@@ -143,8 +143,8 @@ export async function seedWeek(env: any, user = OWNER) {
   await add({ date: '2026-10-12', start_time: '17:00' });                                    // состоялась, без цены
   await add({ date: '2026-10-06', start_time: '10:00', price: 1000 });                       // прошлая неделя
   const exp = (date: string, name: string, amount: number) => api(env, user, 'POST', '/api/expenses', { date, name, amount });
-  await exp('2026-10-12', 'гель-лак', 450);
-  await exp('2026-10-13', 'Гель-лак', 300);
-  await exp('2026-10-14', 'Пилки', 150);
-  await exp('2026-10-07', 'Пилки', 200); // прошлая неделя
+  await exp('2026-10-12', 'аренда зала', 450);
+  await exp('2026-10-13', 'Аренда зала', 300);
+  await exp('2026-10-14', 'Инвентарь', 150);
+  await exp('2026-10-07', 'Инвентарь', 200); // прошлая неделя
 }

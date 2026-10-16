@@ -54,11 +54,36 @@ describe('записи', () => {
     expect(a).toMatchObject({ id, client_name: 'Инна', service: 'personal', price: 800, status: 'scheduled', start_time: '10:00', end_time: '11:00' });
   });
 
-  it('новая запись шлёт тренеру уведомление и заводит клиента', async () => {
+  it('новая запись заводит клиента; о собственной записи тренеру сообщение не приходит', async () => {
     await add({ client_name: 'Оля' });
-    expect(tg.some((c) => c.method === 'sendMessage' && String(c.text).includes('Новая запись'))).toBe(true);
+    expect(tg.some((c) => c.method === 'sendMessage')).toBe(false);
     const clients = (await api(env, OWNER, 'GET', '/api/clients')).json as any[];
     expect(clients.map((c) => c.name)).toContain('Оля');
+  });
+
+  it('заметка дня уходит в чат только при включённой настройке notify_note', async () => {
+    await api(env, OWNER, 'PUT', '/api/notes/2026-10-12', { text: 'программа на день' });
+    expect(tg.filter((c) => c.method === 'sendMessage')).toHaveLength(0);
+
+    const s = (await api(env, OWNER, 'GET', '/api/settings')).json;
+    expect(s.notify_note).toBe(false);
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, notify_note: true })).json.notify_note).toBe(true);
+    await api(env, OWNER, 'PUT', '/api/notes/2026-10-13', { text: 'ещё заметка' });
+    const sent = tg.filter((c) => c.method === 'sendMessage');
+    expect(sent).toHaveLength(1);
+    expect(String(sent[0].text)).toContain('ещё заметка');
+  });
+
+  it('настройки: валюта, время поздравления и копии, сводка недели', async () => {
+    const s = (await api(env, OWNER, 'GET', '/api/settings')).json;
+    expect(s).toMatchObject({ currency: null, birthday_time: '10:00', backup_time: '21:00', notify_summary: true });
+
+    const put = await api(env, OWNER, 'PUT', '/api/settings', { ...s, currency: ' лей ', birthday_time: '09:30', backup_time: '20:00', notify_summary: false });
+    expect(put.json).toMatchObject({ currency: 'лей', birthday_time: '09:30', backup_time: '20:00', notify_summary: false });
+
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, currency: 'очень-длинная-валюта' })).status).toBe(400);
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, birthday_time: '9:30' })).status).toBe(400);
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, currency: '' })).json.currency).toBeNull();
   });
 
   it('плохие данные → 400 с понятным текстом', async () => {
@@ -152,7 +177,7 @@ describe('доходы и статистика', () => {
   it('траты, прибыль и материалы (регистр названия не важен)', async () => {
     const r = (await api(env, OWNER, 'GET', '/api/stats?period=week')).json;
     expect(r).toMatchObject({ total_expense: 900, profit: 1600, expense_count: 3 });
-    expect(r.materials).toEqual([{ name: 'Гель-лак', sum: 750, count: 2 }, { name: 'Пилки', sum: 150, count: 1 }]);
+    expect(r.expense_items).toEqual([{ name: 'Аренда зала', sum: 750, count: 2 }, { name: 'Инвентарь', sum: 150, count: 1 }]);
     expect(r.buckets).toHaveLength(7);
     expect(r.buckets[0]).toMatchObject({ key: '2026-10-12', sum: 800, expense: 450 });
   });
@@ -180,18 +205,18 @@ describe('доходы и статистика', () => {
 
 describe('траты', () => {
   it('создание, нормализация названия, правка, список по периоду, подсказки, удаление', async () => {
-    const id = (await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-10', name: '  гель   лак ', amount: '1 200' })).json.id;
-    await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-11', name: 'Пилки', amount: 100 });
-    await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-12', name: 'Пилки', amount: 100 });
+    const id = (await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-10', name: '  аренда   зала ', amount: '1 200' })).json.id;
+    await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-11', name: 'Инвентарь', amount: 100 });
+    await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-10-12', name: 'Инвентарь', amount: 100 });
     await api(env, OWNER, 'POST', '/api/expenses', { date: '2026-11-01', name: 'Другой месяц', amount: 5 });
 
     const oct = (await api(env, OWNER, 'GET', '/api/expenses?from=2026-10-01&to=2026-10-31')).json as any[];
-    expect(oct.map((e) => e.name)).toEqual(['Пилки', 'Пилки', 'Гель лак']); // новые сверху
+    expect(oct.map((e) => e.name)).toEqual(['Инвентарь', 'Инвентарь', 'Аренда зала']); // новые сверху
     expect(oct[2].amount).toBe(1200);
-    expect((await api(env, OWNER, 'GET', '/api/expenses/names')).json[0]).toBe('Пилки'); // самое частое
+    expect((await api(env, OWNER, 'GET', '/api/expenses/names')).json[0]).toBe('Инвентарь'); // самое частое
 
-    expect((await api(env, OWNER, 'PUT', `/api/expenses/${id}`, { date: '2026-10-10', name: 'Гель-лак', amount: 1300 })).status).toBe(200);
-    expect(((await api(env, OWNER, 'GET', '/api/expenses?from=2026-10-10&to=2026-10-10')).json as any[])[0]).toMatchObject({ name: 'Гель-лак', amount: 1300 });
+    expect((await api(env, OWNER, 'PUT', `/api/expenses/${id}`, { date: '2026-10-10', name: 'Аренда зала', amount: 1300 })).status).toBe(200);
+    expect(((await api(env, OWNER, 'GET', '/api/expenses?from=2026-10-10&to=2026-10-10')).json as any[])[0]).toMatchObject({ name: 'Аренда зала', amount: 1300 });
     expect((await api(env, OWNER, 'DELETE', `/api/expenses/${id}`)).json).toEqual({ ok: true });
   });
 
@@ -243,12 +268,12 @@ describe('выгрузки', () => {
     const csv = tg.find((c) => c.method === 'sendDocument')!.file!;
     const lines = csv.replace('\uFEFF', '').split('\r\n');
     expect(lines).toContain('доход;2026-10-12;Инна;персональная тренировка;800');
-    expect(lines).toContain('трата;2026-10-12;Гель-лак;расходы;450');
+    expect(lines).toContain('трата;2026-10-12;Аренда зала;расходы;450');
     expect(lines).toContain('итого доход;;;;2500');
     expect(lines).toContain('итого траты;;;;900');
     expect(lines).toContain('прибыль;;;;1600');
     expect(lines).toContain('записей без цены (не учтены);;;;1');
-    expect(lines).toContain('статья;;Гель-лак;2;750');
+    expect(lines).toContain('статья;;Аренда зала;2;750');
     expect(csv).not.toContain(';600'); // отменённая
     expect(csv).not.toContain(';400'); // не пришёл
     expect(csv).not.toContain(';900\r\n' + 'доход'); // будущая запись (900) не в доходе

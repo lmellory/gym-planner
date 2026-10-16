@@ -1805,7 +1805,7 @@ body {
 .income-chart.is-expense .income-bar.is-today .income-bar-fill { background: #8aa2dc; }
 .income-chart.is-expense .income-bar.is-selected .income-bar-fill { background: #4f6bbd; }
 
-.materials-card {
+.article-card {
   background: var(--secondary-bg);
   border: 1px solid var(--accent-pink-border);
   border-radius: var(--radius-lg);
@@ -1813,11 +1813,11 @@ body {
   box-shadow: var(--card-shadow);
   margin: 12px 0;
 }
-.materials-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-.materials-empty { font-size: 13px; color: var(--hint-color); text-align: center; padding: 6px 0; }
-.materials-more { font-size: 12px; color: var(--hint-color); text-align: center; padding-top: 6px; }
+.article-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.article-empty { font-size: 13px; color: var(--hint-color); text-align: center; padding: 6px 0; }
+.article-more { font-size: 12px; color: var(--hint-color); text-align: center; padding-top: 6px; }
 
-.material-row {
+.article-row {
   position: relative;
   display: flex;
   align-items: center;
@@ -1828,16 +1828,16 @@ body {
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
-.material-bar {
+.article-bar {
   position: absolute;
   inset: 0 auto 0 0;
   background: rgba(120, 140, 200, 0.16);
   border-radius: var(--radius-sm);
 }
-.material-info { position: relative; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.material-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.material-count { font-size: 12px; color: var(--hint-color); flex-shrink: 0; }
-.material-sum { position: relative; font-size: 14px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.article-info { position: relative; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.article-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.article-count { font-size: 12px; color: var(--hint-color); flex-shrink: 0; }
+.article-sum { position: relative; font-size: 14px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .income-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
 .income-actions .btn { width: 100%; }
@@ -1931,8 +1931,8 @@ body {
 .acting-as #btn-edit-note-card { display: none !important; }
 
 .admin-intro { margin: 4px 0 14px; font-size: 14px; opacity: 0.8; line-height: 1.4; }
-.admin-masters-list { display: flex; flex-direction: column; gap: 10px; }
-.admin-master-card { cursor: pointer; }
+.admin-trainers-list { display: flex; flex-direction: column; gap: 10px; }
+.admin-trainer-card { cursor: pointer; }
 .admin-badge {
   display: inline-block;
   margin-left: 6px;

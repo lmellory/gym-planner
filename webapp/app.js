@@ -110,8 +110,9 @@ const RU_MONTHS_NOM = [
 ];
 const RU_WEEKDAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-// Подпись валюты у сумм. Поменяй под себя ('лей', '₽', '$') или оставь '' — тогда только число.
-const CURRENCY = 'руб.';
+// Подпись валюты у сумм. Настраивается в «Настройках» (поле «Валюта»); по умолчанию — «руб.».
+const DEFAULT_CURRENCY = 'руб.';
+let CURRENCY = DEFAULT_CURRENCY;
 function formatMoney(n) {
   const num = new Intl.NumberFormat('ru-RU').format(Math.round(Number(n) || 0));
   return CURRENCY ? `${num}\u00A0${CURRENCY}` : num;
@@ -1231,7 +1232,17 @@ async function openSettings() {
     const workEnd = document.getElementById('setting-work-end');
 
     const backupCheck = document.getElementById('setting-backup-enabled');
+    const noteCheck = document.getElementById('setting-notify-note');
+    const summaryCheck = document.getElementById('setting-notify-summary');
+    const backupTime = document.getElementById('setting-backup-time');
+    const birthdayTime = document.getElementById('setting-birthday-time');
+    const currencyInput = document.getElementById('setting-currency');
     if (backupCheck) backupCheck.checked = s.backup_enabled !== false;
+    if (noteCheck) noteCheck.checked = !!s.notify_note;
+    if (summaryCheck) summaryCheck.checked = s.notify_summary !== false;
+    if (backupTime) backupTime.value = s.backup_time || '21:00';
+    if (birthdayTime) birthdayTime.value = s.birthday_time || '10:00';
+    if (currencyInput) currencyInput.value = s.currency || '';
     if (enabledCheck) enabledCheck.checked = !!s.notify_enabled;
     if (newApptCheck) newApptCheck.checked = s.notify_new_appt !== false;
     if (timeInput) timeInput.value = s.notify_time || '22:00';
@@ -1269,21 +1280,32 @@ async function saveSettings() {
   const work_end_time = document.getElementById('setting-work-end')?.value || '20:00';
   const work_days = selectedWorkDays.join(',');
   const backup_enabled = !!document.getElementById('setting-backup-enabled')?.checked;
+  const notify_note = !!document.getElementById('setting-notify-note')?.checked;
+  const notify_summary = !!document.getElementById('setting-notify-summary')?.checked;
+  const backup_time = document.getElementById('setting-backup-time')?.value || '21:00';
+  const birthday_time = document.getElementById('setting-birthday-time')?.value || '10:00';
+  const currency = (document.getElementById('setting-currency')?.value || '').trim();
 
   try {
-    await api('/settings', {
+    const saved = await api('/settings', {
       method: 'PUT',
       body: JSON.stringify({
         notify_enabled,
         notify_time,
         tz,
         notify_new_appt,
+        notify_note,
+        notify_summary,
         work_start_time,
         work_end_time,
         work_days,
         backup_enabled,
+        backup_time,
+        birthday_time,
+        currency,
       }),
     });
+    CURRENCY = saved.currency || DEFAULT_CURRENCY;
     haptic('success');
     showToast('Настройки сохранены ✅');
   } catch (err) {
@@ -1794,32 +1816,32 @@ function unpricedPhrase(n) {
 
 const incomeValue = (b) => (income.metric === 'expense' ? b.expense : b.sum);
 
-function renderIncomeMaterials(d) {
-  const box = document.getElementById('income-materials');
+function renderIncomeArticles(d) {
+  const box = document.getElementById('income-articles');
   if (!box) return;
   box.innerHTML = '';
-  const list = d.materials || [];
+  const list = d.expense_items || [];
   if (!list.length) {
-    box.innerHTML = '<div class="materials-empty">Трат за этот период нет</div>';
+    box.innerHTML = '<div class="article-empty">Трат за этот период нет</div>';
     return;
   }
   const top = list[0].sum || 1;
   list.slice(0, 10).forEach((m) => {
     const row = document.createElement('div');
-    row.className = 'material-row';
+    row.className = 'article-row';
     row.innerHTML = `
-      <div class="material-bar" style="width: ${Math.max(4, Math.round((m.sum / top) * 100))}%"></div>
-      <div class="material-info">
-        <span class="material-name">${escapeHtml(m.name)}</span>
-        <span class="material-count">${m.count}×</span>
+      <div class="article-bar" style="width: ${Math.max(4, Math.round((m.sum / top) * 100))}%"></div>
+      <div class="article-info">
+        <span class="article-name">${escapeHtml(m.name)}</span>
+        <span class="article-count">${m.count}×</span>
       </div>
-      <div class="material-sum">${formatMoney(m.sum)}</div>`;
+      <div class="article-sum">${formatMoney(m.sum)}</div>`;
     box.appendChild(row);
   });
   const rest = list.slice(10);
   if (rest.length) {
     const more = document.createElement('div');
-    more.className = 'materials-more';
+    more.className = 'article-more';
     more.textContent = `Ещё ${rest.length} поз. на ${formatMoney(rest.reduce((a, m) => a + m.sum, 0))} — в «Все траты за период»`;
     box.appendChild(more);
   }
@@ -1900,7 +1922,7 @@ function renderIncomeSummary() {
     extraEl.style.display = lines.length ? 'block' : 'none';
   }
 
-  renderIncomeMaterials(d);
+  renderIncomeArticles(d);
 }
 
 function renderIncomeChart() {
@@ -2245,18 +2267,18 @@ async function loadMe() {
   if (btn) btn.style.display = state.isAdmin ? '' : 'none';
 }
 
-function masterLabel(m) {
+function trainerLabel(m) {
   return m.name || (m.username ? '@' + m.username : 'ID ' + m.user_id);
 }
 
-function renderAdminMasters(masters) {
-  const list = document.getElementById('admin-masters-list');
+function renderAdminTrainers(trainers) {
+  const list = document.getElementById('admin-trainers-list');
   if (!list) return;
-  if (!masters.length) {
+  if (!trainers.length) {
     list.innerHTML = '<div class="empty-state">Тренеров пока нет</div>';
     return;
   }
-  list.innerHTML = masters
+  list.innerHTML = trainers
     .map((m) => {
       const badge = m.banned
         ? '<span class="admin-badge is-banned">заблокирован</span>'
@@ -2265,9 +2287,9 @@ function renderAdminMasters(masters) {
           : '';
       const last = m.last_appointment ? ` · последняя запись ${escapeHtml(m.last_appointment)}` : '';
       return `
-        <div class="client-card admin-master-card" data-id="${m.user_id}">
+        <div class="client-card admin-trainer-card" data-id="${m.user_id}">
           <div class="client-card-top">
-            <div class="client-card-name">${escapeHtml(masterLabel(m))} ${badge}</div>
+            <div class="client-card-name">${escapeHtml(trainerLabel(m))} ${badge}</div>
             <div class="client-card-visits">${m.appointments}</div>
           </div>
           <div class="client-card-contacts">${m.username ? '@' + escapeHtml(m.username) + ' · ' : ''}ID ${m.user_id}</div>
@@ -2275,9 +2297,9 @@ function renderAdminMasters(masters) {
         </div>`;
     })
     .join('');
-  list.querySelectorAll('.admin-master-card').forEach((el) => {
+  list.querySelectorAll('.admin-trainer-card').forEach((el) => {
     el.addEventListener('click', () => {
-      const m = masters.find((x) => String(x.user_id) === el.dataset.id);
+      const m = trainers.find((x) => String(x.user_id) === el.dataset.id);
       if (m) enterActAs(m);
     });
   });
@@ -2285,11 +2307,11 @@ function renderAdminMasters(masters) {
 
 async function openAdmin() {
   goScreen('admin');
-  const list = document.getElementById('admin-masters-list');
+  const list = document.getElementById('admin-trainers-list');
   if (list) list.innerHTML = '<div class="empty-state">Загрузка…</div>';
   try {
-    const data = await api('/admin/masters');
-    renderAdminMasters(data.masters || []);
+    const data = await api('/admin/trainers');
+    renderAdminTrainers(data.trainers || []);
   } catch {
     if (list) list.innerHTML = '<div class="empty-state">Не удалось загрузить список тренеров</div>';
   }
@@ -2316,10 +2338,10 @@ function setActAsUI(on) {
   if (banner) banner.style.display = on ? 'flex' : 'none';
 }
 
-async function enterActAs(master) {
+async function enterActAs(trainer) {
   haptic('medium');
-  state.actAs = master.user_id;
-  state.actAsLabel = masterLabel(master);
+  state.actAs = trainer.user_id;
+  state.actAsLabel = trainerLabel(trainer);
   setActAsUI(true);
   goScreen('main');
   await reloadScheduleData();
@@ -2342,10 +2364,17 @@ document.getElementById('btn-act-as-exit')?.addEventListener('click', exitActAs)
 
 // ===== 9. ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====
 
+/** Подпись валюты берём из настроек тренера (в режиме «правка за тренера» — его настройки). */
+async function loadCurrency() {
+  const s = await api('/settings');
+  CURRENCY = s.currency || DEFAULT_CURRENCY;
+}
+
 async function init() {
   updateGreeting();
   goScreen('main');
   loadMe().catch(() => {});
+  loadCurrency().catch(() => {});
   loadClientsDatalist().catch(() => {});
   loadPrices().catch(() => {});
   await loadWeekSummary();

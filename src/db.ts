@@ -1,6 +1,6 @@
 // Все запросы к D1. ВАЖНО: каждый запрос фильтруется по user_id.
 import type { Appointment, Client, Expense, ExpenseInput, UserRow } from './types';
-import type { DayRow, ExpenseDayRow, MaterialRow } from './lib/stats';
+import type { DayRow, ExpenseDayRow, ExpenseNameRow } from './lib/stats';
 
 export type AppointmentInput = Omit<Appointment, 'id' | 'user_id'>;
 export type ClientInput = { name: string; phone?: string | null; telegram?: string | null; notes?: string | null; birthday?: string | null };
@@ -379,10 +379,15 @@ export async function updateUserSettings(
     notify_time?: string;
     tz?: string;
     notify_new_appt?: boolean | number;
+    notify_note?: boolean | number;
+    notify_summary?: boolean | number;
     work_start_time?: string;
     work_end_time?: string;
     work_days?: string;
     backup_enabled?: boolean | number;
+    currency?: string | null; // undefined — не менять, null — по умолчанию
+    birthday_time?: string;
+    backup_time?: string;
   },
 ): Promise<UserRow> {
   const current = (await getUser(db, userId))!;
@@ -393,19 +398,30 @@ export async function updateUserSettings(
   const notifyTime = settings.notify_time ?? current.notify_time;
   const tz = settings.tz ?? current.tz;
   const notifyNewAppt = flag(settings.notify_new_appt, current.notify_new_appt);
+  const notifyNote = flag(settings.notify_note, current.notify_note ?? 0);
+  const notifySummary = flag(settings.notify_summary, current.notify_summary ?? 1);
   const workStart = settings.work_start_time ?? current.work_start_time ?? '09:00';
   const workEnd = settings.work_end_time ?? current.work_end_time ?? '20:00';
   const workDays = settings.work_days ?? current.work_days ?? '1,2,3,4,5,6';
   const backupEnabled = flag(settings.backup_enabled, current.backup_enabled ?? 1);
+  const currency = settings.currency === undefined ? (current.currency ?? null) : settings.currency;
+  const birthdayTime = settings.birthday_time ?? current.birthday_time ?? '10:00';
+  const backupTime = settings.backup_time ?? current.backup_time ?? '21:00';
 
   await db
     .prepare(
       `UPDATE users
-       SET notify_enabled=?, notify_time=?, tz=?, notify_new_appt=?,
-           work_start_time=?, work_end_time=?, work_days=?, backup_enabled=?
+       SET notify_enabled=?, notify_time=?, tz=?, notify_new_appt=?, notify_note=?, notify_summary=?,
+           work_start_time=?, work_end_time=?, work_days=?, backup_enabled=?,
+           currency=?, birthday_time=?, backup_time=?
        WHERE user_id=?`,
     )
-    .bind(notifyEnabled, notifyTime, tz, notifyNewAppt, workStart, workEnd, workDays, backupEnabled, userId)
+    .bind(
+      notifyEnabled, notifyTime, tz, notifyNewAppt, notifyNote, notifySummary,
+      workStart, workEnd, workDays, backupEnabled,
+      currency, birthdayTime, backupTime,
+      userId,
+    )
     .run();
   return (await db.prepare('SELECT * FROM users WHERE user_id = ?').bind(userId).first<UserRow>())!;
 }
@@ -662,8 +678,8 @@ export async function getExpensesByDay(db: D1Database, userId: number, from: str
   return r.results;
 }
 
-/** Траты по материалам за период (самые большие сверху). */
-export async function getExpensesByName(db: D1Database, userId: number, from: string, to: string): Promise<MaterialRow[]> {
+/** Траты по статьям за период (самые большие сверху). */
+export async function getExpensesByName(db: D1Database, userId: number, from: string, to: string): Promise<ExpenseNameRow[]> {
   const r = await db
     .prepare(
       `SELECT name, SUM(amount) AS sum, COUNT(*) AS count FROM expenses
@@ -671,7 +687,7 @@ export async function getExpensesByName(db: D1Database, userId: number, from: st
        GROUP BY name ORDER BY sum DESC, name LIMIT 100`,
     )
     .bind(userId, from, to)
-    .all<MaterialRow>();
+    .all<ExpenseNameRow>();
   return r.results;
 }
 

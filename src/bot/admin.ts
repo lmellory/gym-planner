@@ -14,7 +14,6 @@
 //   /broadcast текст  — сообщение всем, у кого есть доступ
 //   /adduser ID       — выдать доступ к боту и приложению
 //   /ban ID, /unban ID — закрыть доступ / вернуть его (данные пользователя не удаляются)
-// Наблюдатели (VIEWER_IDS) могут только /records (и /admin со своим списком): смотреть и выгружать записи.
 // Данные командами не удаляются; записи админ правит в Mini App (админ-панель).
 import type { Appointment, Env } from '../types';
 import {
@@ -38,13 +37,6 @@ import { escapeHtml, getMe, getWebhookInfo, sendDocument, sendMessage } from './
 // isAdmin живёт в lib/access.ts (его же использует проверка доступа в приложении); здесь — для удобства бота и тестов
 export { isAdmin };
 
-/** true, если userId есть в VIEWER_IDS (список через запятую). Наблюдатель только смотрит записи. */
-export function isViewer(env: Pick<Env, 'VIEWER_IDS'>, userId: number): boolean {
-  return parseIdList(env.VIEWER_IDS).includes(userId);
-}
-
-export type StaffRole = 'admin' | 'viewer';
-
 /** Все команды администратора (с «/»). Остальным бот на них не отвечает. */
 export const ADMIN_COMMANDS = [
   '/admin',
@@ -63,10 +55,6 @@ export const ADMIN_COMMANDS = [
 ] as const;
 
 export const isAdminCommand = (cmd: string): boolean => (ADMIN_COMMANDS as readonly string[]).includes(cmd);
-
-/** Команды, доступные наблюдателю. */
-export const VIEWER_COMMANDS = ['/admin', '/records'] as const;
-export const isViewerCommand = (cmd: string): boolean => (VIEWER_COMMANDS as readonly string[]).includes(cmd);
 
 /** Максимальная длина текста для /send и /broadcast (лимит Telegram — 4096 с учётом заголовка). */
 export const MAX_ANNOUNCE_LENGTH = 3500;
@@ -90,11 +78,6 @@ const HELP =
   '/ban <code>ID</code> — закрыть доступ (данные остаются)\n' +
   '/unban <code>ID</code> — вернуть доступ\n\n' +
   '✏️ Записи тренеров правятся в приложении: кнопка 🛠 в шапке.';
-
-const VIEWER_HELP =
-  '👁 <b>Команды наблюдателя</b>\n\n' +
-  '/records — все записи всех тренеров за всё время (файл CSV, открывается в Excel)\n' +
-  '/records <code>ID</code> — все записи одного тренера';
 
 const USAGE_RECORDS = 'Использование: <code>/records</code> или <code>/records ID</code>, например <code>/records 123456789</code>.';
 const USAGE_EXPORT = 'Использование: <code>/export ID</code>, например <code>/export 123456789</code>.';
@@ -124,14 +107,11 @@ export async function handleAdminCommand(
   adminId: number,
   cmd: string,
   args: string,
-  role: StaffRole = 'admin',
 ): Promise<void> {
-  // Наблюдатель: только свои команды (вторая линия защиты, помимо проверки в webhook)
-  if (role === 'viewer' && !isViewerCommand(cmd)) return;
   const arg = args.trim();
   switch (cmd) {
     case '/admin':
-      await sendMessage(env, chatId, role === 'viewer' ? VIEWER_HELP : HELP);
+      await sendMessage(env, chatId, HELP);
       return;
     case '/records':
       return handleRecordsCommand(env, chatId, adminId, arg.split(/\s+/)[0] || undefined);
@@ -436,9 +416,9 @@ export async function handleBroadcastCommand(env: Env, chatId: number, adminId: 
 
 /**
  * /records — все записи всех тренеров за всё время одним файлом CSV (UTF-8 с BOM, «;»: открывается в Excel).
- * /records ID — записи одного тренера. Только просмотр: ничего не меняет. Доступно администратору и наблюдателям.
+ * /records ID — записи одного тренера. Только просмотр: ничего не меняет.
  */
-export async function handleRecordsCommand(env: Env, chatId: number, viewerId: number, arg?: string): Promise<void> {
+export async function handleRecordsCommand(env: Env, chatId: number, adminId: number, arg?: string): Promise<void> {
   const { date } = nowInTz(env.TZ);
   let items: Appointment[];
   let filename: string;
@@ -446,9 +426,9 @@ export async function handleRecordsCommand(env: Env, chatId: number, viewerId: n
 
   if (!arg) {
     items = await getEveryAppointment(env.DB);
-    const masters = new Set(items.map((a) => a.user_id)).size;
+    const trainers = new Set(items.map((a) => a.user_id)).size;
     filename = `gym-planner-all-${date}.csv`;
-    caption = `📊 Все записи за всё время (${date}): ${items.length}, тренеров: ${masters}`;
+    caption = `📊 Все записи за всё время (${date}): ${items.length}, тренеров: ${trainers}`;
   } else {
     if (!isId(arg)) {
       await sendMessage(env, chatId, `Некорректный ID.\n${USAGE_RECORDS}`);
@@ -476,7 +456,7 @@ export async function handleRecordsCommand(env: Env, chatId: number, viewerId: n
     caption,
   );
   if (!r.ok) await sendMessage(env, chatId, 'Не удалось отправить файл в Telegram, попробуйте ещё раз.');
-  console.log(`records viewer=${viewerId} target=${arg ?? 'all'} appointments=${items.length} ok=${r.ok}`);
+  console.log(`records admin=${adminId} target=${arg ?? 'all'} appointments=${items.length} ok=${r.ok}`);
 }
 
 /**

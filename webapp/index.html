@@ -14,7 +14,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/style.css?v=3">
+  <link rel="stylesheet" href="/style.css?v=4">
 </head>
 <body>
   <div id="app">
@@ -324,7 +324,7 @@
     <section class="screen" id="screen-admin">
       <div class="screen-content">
         <div class="admin-intro">Выберите тренера: можно смотреть, добавлять, менять и удалять его записи. Все изменения попадают в журнал.</div>
-        <div class="admin-masters-list" id="admin-masters-list">
+        <div class="admin-trainers-list" id="admin-trainers-list">
           <!-- Тренера генерируются через JS -->
         </div>
       </div>
@@ -368,10 +368,26 @@
 
           <div class="setting-toggle-row">
             <div>
-              <label for="setting-notify-new-appt" class="toggle-label">Сообщение о новой записи</label>
-              <small class="form-hint">Приходит при добавлении записи и само удаляется из чата через сутки. Сама запись остаётся в календаре.</small>
+              <label for="setting-notify-new-appt" class="toggle-label">Сообщение, если запись добавил администратор</label>
+              <small class="form-hint">О записях, которые вы вносите сами, бот не пишет. Если запись за вас добавил администратор, придёт сообщение, и само удалится из чата через сутки. Сама запись остаётся в календаре.</small>
             </div>
             <input type="checkbox" id="setting-notify-new-appt" class="toggle-checkbox">
+          </div>
+
+          <div class="setting-toggle-row">
+            <div>
+              <label for="setting-notify-note" class="toggle-label">Дублировать заметку дня в чат</label>
+              <small class="form-hint">После сохранения заметки бот пришлёт её текстом сюда в чат. Сообщение удалится через сутки.</small>
+            </div>
+            <input type="checkbox" id="setting-notify-note" class="toggle-checkbox">
+          </div>
+
+          <div class="setting-toggle-row">
+            <div>
+              <label for="setting-notify-summary" class="toggle-label">Сводка недели по воскресеньям</label>
+              <small class="form-hint">Вечером в воскресенье: сколько занятий состоялось, доход, пропуски, кому пора продлить абонемент и кого давно не было.</small>
+            </div>
+            <input type="checkbox" id="setting-notify-summary" class="toggle-checkbox">
           </div>
 
           <div class="form-group" id="group-notify-time">
@@ -424,9 +440,26 @@
           <div class="setting-toggle-row">
             <div>
               <label for="setting-backup-enabled" class="toggle-label">Присылать копию раз в неделю</label>
-              <small class="form-hint">По воскресеньям в 21:00 бот присылает файл со всеми записями, клиентами, тратами и прайсом. Первая копия придёт сразу после включения.</small>
+              <small class="form-hint">По воскресеньям бот присылает файл со всеми записями, клиентами, абонементами, тратами и прайсом. Первая копия придёт сразу после включения.</small>
             </div>
             <input type="checkbox" id="setting-backup-enabled" class="toggle-checkbox">
+          </div>
+
+          <div class="time-range-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="setting-backup-time">Время копии в воскресенье</label>
+              <input type="time" id="setting-backup-time" class="form-input" value="21:00">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="setting-birthday-time">Поздравление с днём рождения клиента</label>
+              <input type="time" id="setting-birthday-time" class="form-input" value="10:00">
+            </div>
+          </div>
+
+          <div class="settings-card-title" style="margin-top: 18px;">💱 Валюта</div>
+          <div class="form-group">
+            <label for="setting-currency">Подпись у сумм (например, руб., лей, $)</label>
+            <input type="text" id="setting-currency" class="form-input" maxlength="10" placeholder="руб.">
           </div>
 
           <button type="button" class="btn-primary" id="btn-save-settings">Сохранить настройки</button>
@@ -578,9 +611,9 @@
 
         <div class="income-note" id="income-note" style="display: none;"></div>
 
-        <div class="materials-card">
-          <div class="materials-title">Траты по статьям</div>
-          <div id="income-materials"></div>
+        <div class="article-card">
+          <div class="article-title">Траты по статьям</div>
+          <div id="income-articles"></div>
         </div>
 
         <div class="income-actions">
@@ -775,6 +808,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

@@ -24,8 +24,6 @@ ENABLE_ID_COMMAND = "true"
 # Им доступны команды бота (/admin) и админ-панель в Mini App: выбор тренера, добавление, правка и удаление его записей.
 # Администратору не нужно быть в ALLOWED_IDS.
 ADMIN_ID = "5067848442,352999678"
-# Наблюдатели (через запятую): только смотрят записи всех тренеров (/records, CSV для Excel), без правки. Сейчас пусто.
-VIEWER_IDS = ""
 TURSO_URL = "libsql://gymplanner-lmellory.aws-eu-west-1.turso.io"   # НОВАЯ база Turso для тренера, не база маникюрного бота
 # После первого деплоя впиши сюда адрес своего Worker (с https:// и слэшем в конце):
 APP_URL = "https://gym-planner.mellory.workers.dev"

@@ -7,6 +7,7 @@ import {
   getAllExpenses,
   getServicePrices,
 } from '../db';
+import { settingsView } from './settings';
 
 export const BACKUP_FORMAT = 'gym-planner-backup';
 export const BACKUP_VERSION = 2;
@@ -20,16 +21,7 @@ export async function buildJsonBackup(db: D1Database, userId: number, fallbackTz
     getAllDayNotes(db, userId),
     getServicePrices(db, userId),
   ]);
-  const settings = {
-    notify_enabled: !!u.notify_enabled,
-    notify_time: u.notify_time,
-    tz: u.tz,
-    notify_new_appt: !!u.notify_new_appt,
-    work_start_time: u.work_start_time ?? '09:00',
-    work_end_time: u.work_end_time ?? '20:00',
-    work_days: u.work_days ?? '1,2,3,4,5,6',
-    backup_enabled: u.backup_enabled !== 0,
-  };
+  const settings = settingsView(u);
   return JSON.stringify(
     {
       format: BACKUP_FORMAT,
