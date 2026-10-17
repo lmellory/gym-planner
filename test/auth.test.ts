@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAllowedIds, verifyInitData } from '../src/auth';
+import { verifyInitData } from '../src/auth';
 
 const enc = new TextEncoder();
 
@@ -45,20 +45,6 @@ async function createValidInitData(
   params.set('hash', hash);
   return params.toString();
 }
-
-describe('parseAllowedIds', () => {
-  it('парсит список ID через запятую и пробелы', () => {
-    expect(parseAllowedIds('123, 456, 789')).toEqual([123, 456, 789]);
-  });
-
-  it('игнорирует некорректные и отрицательные значения', () => {
-    expect(parseAllowedIds('123, abc, -5, 0, 456, ')).toEqual([123, 456]);
-  });
-
-  it('возвращает пустой массив для пустой строки', () => {
-    expect(parseAllowedIds('')).toEqual([]);
-  });
-});
 
 describe('verifyInitData', () => {
   const token = '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11';

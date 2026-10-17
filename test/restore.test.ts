@@ -13,7 +13,7 @@ beforeEach(async () => {
   const t = await createTestDb();
   closeDb = t.close;
   db = t.db;
-  env = makeEnv(db);
+  env = await makeEnv(db);
   stubTelegram();
 });
 afterEach(() => { closeDb(); vi.useRealTimers(); vi.unstubAllGlobals(); });

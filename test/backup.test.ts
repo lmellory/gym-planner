@@ -43,6 +43,8 @@ function makeDb(user: any) {
       return sql.includes('FROM users') ? { ...user } : null;
     },
     async all() {
+      // доступ тренера 1 выдан (таблица access): копия уходит только тем, у кого он есть
+      if (sql.includes('FROM access')) return { results: [{ user_id: 1, added: 1, banned: 0 }] };
       return { results: [] };
     },
     async run() {
@@ -66,7 +68,7 @@ const baseUser = () => ({
   user_id: 1, tz: 'Europe/Chisinau', notify_enabled: 1, notify_time: '22:00', notify_new_appt: 1,
   last_notified_date: null, backup_enabled: 1, last_backup_date: null as string | null,
 });
-const envWith = (DB: any) => ({ DB, ALLOWED_IDS: '1', TZ: 'Europe/Chisinau', BOT_TOKEN: 't' }) as any;
+const envWith = (DB: any) => ({ DB, TZ: 'Europe/Chisinau', BOT_TOKEN: 't' }) as any;
 
 describe('runWeeklyBackups', () => {
   beforeEach(() => {

@@ -706,8 +706,8 @@ function updateClientMatchBadge() {
   const match = cachedClients.find((c) => c.name.toLowerCase() === val);
   if (match) {
     const parts = [];
-    if (match.phone) parts.push(`📞 ${match.phone}`);
-    if (match.notes) parts.push(`💬 ${match.notes}`);
+    if (match.phone) parts.push(`📞 ${escapeHtml(String(match.phone))}`);
+    if (match.notes) parts.push(`💬 ${escapeHtml(String(match.notes))}`);
     badge.innerHTML = `✨ <b>Клиент из базы:</b> ${parts.join(' · ') || 'Контакты не указаны'}`;
     badge.style.display = 'block';
   } else {

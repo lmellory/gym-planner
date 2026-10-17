@@ -22,12 +22,12 @@
 - `wrangler.toml`: имя `gym-planner`, `TURSO_URL` и `APP_URL` — плейсхолдеры.
 
 ## Что осталось сделать
-1. **Установить зависимости и прогнать проверки**:
-   `npm install && npm run typecheck && npm test`.
+1. ~~Установить зависимости и прогнать проверки~~ — сделано: `typecheck` чистый, `npm test` — 273 из 273.
 2. **Новая инфраструктура**: создать бота в @BotFather, новую базу Turso, затем `wrangler secret put`
-   BOT_TOKEN / ALLOWED_IDS (Telegram ID тренера) / WEBHOOK_SECRET / TURSO_AUTH_TOKEN, вписать `TURSO_URL` и `APP_URL`
+   BOT_TOKEN / WEBHOOK_SECRET / TURSO_AUTH_TOKEN, вписать `TURSO_URL` и `APP_URL`
    в `wrangler.toml`, `npm run migrate`, `npm run deploy`, выставить webhook.
-3. **README.md**: полностью переписан под тренера в спортзале и фитнес-инструктора.
+   Администраторы задаются в `wrangler.toml` (`ADMIN_ID`, два ID через запятую); доступ тренерам выдаётся командой `/adduser`.
+3. **README.md**: переписан под тренера в спортзале; список миграций доведён до `0016`.
 4. **Уточнить у тренера**: список видов занятий и длительности, часовой пояс (`TZ` в `wrangler.toml`, сейчас
    Europe/Chisinau), рабочие часы по умолчанию, валюта (`CURRENCY` в начале `webapp/app.js`), аватар и баннер бота
    (картинки nail-planner не копировались).

@@ -105,6 +105,8 @@ function makeDb(state: { user: any; deletes?: { id: number; chat_id: number; mes
       if (sql.includes('FROM scheduled_deletes')) {
         return { results: deletes.filter((r) => r.delete_at <= args[0]).slice(0, args[1]) };
       }
+      // доступ тренера 1 выдан (таблица access): cron рассылает только тем, у кого он есть
+      if (sql.includes('FROM access')) return { results: [{ user_id: 1, added: 1, banned: 0 }] };
       return { results: [] };
     },
     async run() {
@@ -140,7 +142,7 @@ const baseUser = () => ({
   notify_new_appt: 1,
 });
 
-const envWith = (db: any) => ({ DB: db, ALLOWED_IDS: '1', BOT_TOKEN: 'x', TZ: 'UTC' }) as any;
+const envWith = (db: any) => ({ DB: db, BOT_TOKEN: 'x', TZ: 'UTC' }) as any;
 
 beforeEach(() => {
   vi.useFakeTimers();

@@ -26,7 +26,7 @@ import {
   listUsersAdmin,
   listUsersOverview,
 } from '../db';
-import { getAccessSnapshot, getAccessState, getAllowedIds, grantAccess, isAdmin, parseIdList, setBanned } from '../lib/access';
+import { getAccessSnapshot, getAccessState, getAllowedIds, grantAccess, isAdmin, setBanned } from '../lib/access';
 import { buildJsonBackup } from '../lib/backup';
 import { buildCsv } from '../api/export';
 import { classifySend } from '../cron';
@@ -261,7 +261,7 @@ export async function handleHealthCommand(env: Env, chatId: number): Promise<voi
 
   lines.push(
     `⚙️ Конфигурация: Turso ${env.TURSO_URL && env.TURSO_AUTH_TOKEN ? 'подключён' : 'не задан'}, ` +
-      `с доступом: ${(await getAllowedIds(env)).length}, ALLOWED_IDS: ${parseIdList(env.ALLOWED_IDS).length}, APP_URL ${env.APP_URL ? 'задан' : 'не задан'}`,
+      `с доступом: ${(await getAllowedIds(env)).length}, APP_URL ${env.APP_URL ? 'задан' : 'не задан'}`,
   );
   await sendMessage(env, chatId, `🩺 <b>Состояние</b>\n\n${lines.join('\n')}`);
 }
@@ -461,7 +461,7 @@ export async function handleRecordsCommand(env: Env, chatId: number, adminId: nu
 
 /**
  * /adduser ID — выдать доступ; /ban ID — закрыть доступ; /unban ID — вернуть.
- * Блокировка сильнее и ALLOWED_IDS, и /adduser. Данные пользователя не удаляются: после /unban всё на месте.
+ * Блокировка сильнее выданного доступа. Данные пользователя не удаляются: после /unban всё на месте.
  */
 export async function handleAccessCommand(env: Env, chatId: number, adminId: number, cmd: string, arg?: string): Promise<void> {
   if (!arg) {

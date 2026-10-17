@@ -40,7 +40,7 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-// API Mini App — только с валидной подписью Telegram: тренера с доступом (ALLOWED_IDS, /adduser, минус /ban) и администраторы
+// API Mini App — только с валидной подписью Telegram: тренера с доступом (/adduser, минус /ban) и администраторы
 app.use('/api/*', authMiddleware);
 app.route('/api/me', me);
 app.route('/api/admin', adminApi);

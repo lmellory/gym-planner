@@ -3,7 +3,6 @@ export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   BOT_TOKEN: string;       // secret
-  ALLOWED_IDS: string;     // secret: "123,456"
   ADMIN_ID?: string;       // Telegram ID администраторов через запятую (wrangler.toml [vars]): команды бота и админ-панель Mini App
   WEBHOOK_SECRET: string;  // secret
   TZ: string;              // wrangler.toml [vars]

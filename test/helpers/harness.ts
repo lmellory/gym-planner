@@ -55,11 +55,17 @@ export async function createTestDb(opts: { upTo?: string } = {}) {
   };
 }
 
-export function makeEnv(db: D1Database, extra: Record<string, unknown> = {}): any {
+/** env для тестов. Доступ тренеров выдаётся явно: в бою это делает администратор командой /adduser. */
+export async function makeEnv(db: D1Database, extra: Record<string, unknown> = {}): Promise<any> {
+  for (const id of [OWNER, OTHER]) {
+    await db
+      .prepare('INSERT INTO access (user_id, added) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET added = 1')
+      .bind(id)
+      .run();
+  }
   return {
     DB: db,
     BOT_TOKEN,
-    ALLOWED_IDS: `${OWNER},${OTHER}`,
     TZ: 'Europe/Chisinau',
     APP_URL: 'https://app.test',
     ASSETS: { fetch: async () => new Response('asset') },
