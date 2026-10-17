@@ -29,6 +29,7 @@ export interface Appointment {
   comment: string | null;
   price: number | null; // цена в валюте тренера, целое число; null — не указана
   status: Status;       // scheduled | no_show | cancelled
+  series_id?: string | null; // общий ID серии повторяющихся записей; у одиночных записей null
 }
 
 export interface Expense {

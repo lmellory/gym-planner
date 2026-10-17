@@ -14,7 +14,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/style.css?v=4">
+  <link rel="stylesheet" href="/style.css?v=7">
 </head>
 <body>
   <div id="app">
@@ -197,12 +197,13 @@
             <input type="text" id="form-appt-client" list="clients-datalist" class="form-input" placeholder="Например: Анна" maxlength="100" autocomplete="off" required>
             <datalist id="clients-datalist"></datalist>
             <div class="client-match-badge" id="client-match-badge" style="display: none;"></div>
+            <div class="client-match-badge membership-badge" id="membership-badge" style="display: none;"></div>
           </div>
 
           <!-- Кто это / откуда человек -->
           <div class="form-group">
             <label for="form-appt-who">Кто это, откуда пришёл</label>
-            <input type="text" id="form-appt-who" class="form-input" placeholder="Например: из инсты, по рекомендации; для группы — участники" maxlength="200">
+            <input type="text" id="form-appt-who" class="form-input" placeholder="Например: из инсты, по рекомендации" maxlength="200">
           </div>
 
           <!-- Вид занятия -->
@@ -233,6 +234,37 @@
                 <img src="/assets/service-online.png" class="segment-btn-icon" alt="">
                 <span>Онлайн</span>
               </button>
+            </div>
+          </div>
+
+          <!-- Другие участники сплита / группы (только для новой записи) -->
+          <div class="form-group" id="participants-group" style="display: none;">
+            <label>Другие участники</label>
+            <div id="participants-list"></div>
+            <button type="button" class="btn-secondary" id="btn-add-participant">➕ Добавить участника</button>
+            <small class="form-hint">Каждому участнику создастся своя запись на это же время.</small>
+          </div>
+
+          <!-- Повтор: «вторник и четверг на N недель» (только для новой записи) -->
+          <div class="form-group" id="repeat-group" style="display: none;">
+            <div class="setting-toggle-row repeat-toggle-row">
+              <label for="form-repeat-on" class="toggle-label">🔁 Повторять каждую неделю</label>
+              <input type="checkbox" id="form-repeat-on" class="toggle-checkbox">
+            </div>
+            <div id="repeat-options" style="display: none;">
+              <label>Дни недели</label>
+              <div class="weekday-chips" id="repeat-weekdays">
+                <button type="button" class="weekday-chip" data-wd="1">Пн</button>
+                <button type="button" class="weekday-chip" data-wd="2">Вт</button>
+                <button type="button" class="weekday-chip" data-wd="3">Ср</button>
+                <button type="button" class="weekday-chip" data-wd="4">Чт</button>
+                <button type="button" class="weekday-chip" data-wd="5">Пт</button>
+                <button type="button" class="weekday-chip" data-wd="6">Сб</button>
+                <button type="button" class="weekday-chip" data-wd="7">Вс</button>
+              </div>
+              <label for="form-repeat-weeks">На сколько недель</label>
+              <input type="number" id="form-repeat-weeks" class="form-input" inputmode="numeric" min="1" max="26" step="1" value="4">
+              <small class="form-hint" id="repeat-summary"></small>
             </div>
           </div>
 
@@ -691,6 +723,14 @@
             </div>
           </div>
 
+          <div class="client-membership-section">
+            <div class="client-section-head">
+              <h4>🎟 Абонементы</h4>
+              <button type="button" class="btn-primary-small" id="btn-membership-add">+ Продать</button>
+            </div>
+            <div id="client-membership-list"></div>
+          </div>
+
           <div class="client-history-section">
             <h4>История визитов (<span id="client-history-count">0</span>)</h4>
             <div class="client-history-list" id="client-history-list"></div>
@@ -762,6 +802,45 @@
       </div>
     </div>
 
+    <!-- МОДАЛКА: Абонемент (продажа / правка) -->
+    <div class="modal-overlay" id="modal-membership-edit" style="display: none;">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3 id="modal-membership-title">Новый абонемент</h3>
+          <button type="button" class="modal-close-btn" id="btn-close-membership-edit">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-membership-id">
+          <div class="form-group">
+            <label for="edit-membership-sessions">Сколько занятий *</label>
+            <input type="number" id="edit-membership-sessions" class="form-input" inputmode="numeric" min="1" max="1000" step="1" placeholder="Например: 10">
+          </div>
+          <div class="form-group">
+            <label for="edit-membership-price">Сколько заплатил клиент</label>
+            <input type="number" id="edit-membership-price" class="form-input" inputmode="numeric" min="0" max="10000000" step="1" placeholder="Например: 8000">
+            <span class="field-hint">Попадёт в доход в день продажи. Занятия по абонементу отдельно не считаются</span>
+          </div>
+          <div class="form-group">
+            <label for="edit-membership-start">Дата продажи (с неё идёт списание) *</label>
+            <input type="date" id="edit-membership-start" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="edit-membership-expires">Действует до</label>
+            <input type="date" id="edit-membership-expires" class="form-input">
+            <span class="field-hint">Можно оставить пустым: абонемент бессрочный</span>
+          </div>
+          <div class="form-group">
+            <label for="edit-membership-note">Заметка</label>
+            <input type="text" id="edit-membership-note" class="form-input" maxlength="500" placeholder="Например: утренние тренировки">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-membership-edit">Отмена</button>
+          <button type="button" class="btn btn-primary" id="btn-save-membership">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
     <!-- МОДАЛКА: Трата -->
     <div class="modal-overlay" id="modal-expense-edit" style="display: none;">
       <div class="modal-sheet">
@@ -808,6 +887,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>

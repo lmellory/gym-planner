@@ -1,6 +1,8 @@
 // Все запросы к D1. ВАЖНО: каждый запрос фильтруется по user_id.
 import type { Appointment, Client, Expense, ExpenseInput, UserRow } from './types';
 import type { DayRow, ExpenseDayRow, ExpenseNameRow } from './lib/stats';
+import { allocate, summarize } from './lib/memberships';
+import type { ApptSlot, ClientMembershipSummary, MembershipRow, MembershipView } from './lib/memberships';
 
 export type AppointmentInput = Omit<Appointment, 'id' | 'user_id'>;
 export type ClientInput = { name: string; phone?: string | null; telegram?: string | null; notes?: string | null; birthday?: string | null };
@@ -214,7 +216,7 @@ export async function insertAppointment(
   const res = await db
     .prepare(
       `INSERT INTO appointments (user_id, date, start_time, end_time, client_name, who, service,
-         comment, price, status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+         comment, price, status, series_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .bind(
       userId,
@@ -227,6 +229,7 @@ export async function insertAppointment(
       data.comment,
       data.price ?? null,
       data.status ?? 'scheduled',
+      data.series_id ?? null,
     )
     .run();
   return res.meta.last_row_id as number;
@@ -328,6 +331,29 @@ export async function deleteAppointment(db: D1Database, userId: number, id: numb
     .bind(userId, id)
     .run();
   return (res.meta.changes ?? 0) > 0;
+}
+
+/**
+ * Удаляет запись серии: 'following' — эту и все следующие, 'all' — всю серию (в том числе прошедшие).
+ * У одиночной записи (без серии) удаляется только она. Возвращает, сколько записей удалено.
+ */
+export async function deleteAppointmentScope(
+  db: D1Database,
+  userId: number,
+  id: number,
+  scope: 'following' | 'all',
+): Promise<number> {
+  const a = await getAppointment(db, userId, id);
+  if (!a) return 0;
+  if (!a.series_id) return (await deleteAppointment(db, userId, id)) ? 1 : 0;
+  const res =
+    scope === 'all'
+      ? await db.prepare('DELETE FROM appointments WHERE user_id=? AND series_id=?').bind(userId, a.series_id).run()
+      : await db
+          .prepare('DELETE FROM appointments WHERE user_id=? AND series_id=? AND date >= ?')
+          .bind(userId, a.series_id, a.date)
+          .run();
+  return res.meta.changes ?? 0;
 }
 
 export async function getDayNote(db: D1Database, userId: number, date: string): Promise<string> {
@@ -492,15 +518,170 @@ export async function insertClient(db: D1Database, userId: number, data: ClientI
   return (res.meta.last_row_id as number) || 0;
 }
 
-export async function updateClient(db: D1Database, userId: number, id: number, data: ClientInput): Promise<boolean> {
-  const res = await db
+/**
+ * Обновляет клиента. Записи связаны с клиентом по имени, поэтому при смене имени оно каскадно меняется
+ * во всех его записях (одним батчем), и история не теряется.
+ * 'ok' — готово, 'not_found' — нет такого клиента, 'name_taken' — новое имя уже занято другим клиентом.
+ */
+export async function updateClient(
+  db: D1Database,
+  userId: number,
+  id: number,
+  data: ClientInput,
+): Promise<'ok' | 'not_found' | 'name_taken'> {
+  const current = await db.prepare('SELECT name FROM clients WHERE user_id = ? AND id = ?').bind(userId, id).first<{ name: string }>();
+  if (!current) return 'not_found';
+  const newName = data.name.trim();
+
+  if (newName !== current.name) {
+    const taken = await db
+      .prepare('SELECT id FROM clients WHERE user_id = ? AND name = ? AND id != ?')
+      .bind(userId, newName, id)
+      .first<{ id: number }>();
+    if (taken) return 'name_taken';
+  }
+
+  const update = db
     .prepare(
       `UPDATE clients SET name = ?, phone = ?, telegram = ?, notes = ?, birthday = ?, updated_at = datetime('now')
        WHERE user_id = ? AND id = ?`,
     )
-    .bind(data.name.trim(), data.phone || null, data.telegram || null, data.notes || null, data.birthday || null, userId, id)
+    .bind(newName, data.phone || null, data.telegram || null, data.notes || null, data.birthday || null, userId, id);
+
+  if (newName === current.name) {
+    await update.run();
+  } else {
+    await db.batch([
+      update,
+      db
+        .prepare("UPDATE appointments SET client_name = ?, updated_at = datetime('now') WHERE user_id = ? AND client_name = ?")
+        .bind(newName, userId, current.name),
+      db
+        .prepare("UPDATE memberships SET client_name = ?, updated_at = datetime('now') WHERE user_id = ? AND client_name = ?")
+        .bind(newName, userId, current.name),
+    ]);
+  }
+  return 'ok';
+}
+
+// ===== АБОНЕМЕНТЫ =====
+// Остаток считается на лету (lib/memberships.ts): в базе хранится только сам абонемент.
+
+const MEMBERSHIP_COLS = 'id, client_name, sessions, price, start_date, expires_on, note';
+
+export async function getMembership(db: D1Database, userId: number, id: number): Promise<MembershipRow | null> {
+  return db
+    .prepare(`SELECT ${MEMBERSHIP_COLS} FROM memberships WHERE user_id = ? AND id = ?`)
+    .bind(userId, id)
+    .first<MembershipRow>();
+}
+
+export async function getAllMemberships(db: D1Database, userId: number): Promise<MembershipRow[]> {
+  const r = await db
+    .prepare(`SELECT ${MEMBERSHIP_COLS} FROM memberships WHERE user_id = ? ORDER BY start_date, id`)
+    .bind(userId)
+    .all<MembershipRow>();
+  return r.results;
+}
+
+export type MembershipInput = Pick<MembershipRow, 'sessions' | 'price' | 'start_date' | 'expires_on' | 'note'>;
+
+export async function insertMembership(db: D1Database, userId: number, clientName: string, d: MembershipInput): Promise<number> {
+  const res = await db
+    .prepare(
+      `INSERT INTO memberships (user_id, client_name, sessions, price, start_date, expires_on, note)
+       VALUES (?,?,?,?,?,?,?)`,
+    )
+    .bind(userId, clientName, d.sessions, d.price, d.start_date, d.expires_on, d.note)
+    .run();
+  return res.meta.last_row_id as number;
+}
+
+export async function updateMembership(db: D1Database, userId: number, id: number, d: MembershipInput): Promise<boolean> {
+  const res = await db
+    .prepare(
+      `UPDATE memberships SET sessions=?, price=?, start_date=?, expires_on=?, note=?, updated_at=datetime('now')
+       WHERE user_id=? AND id=?`,
+    )
+    .bind(d.sessions, d.price, d.start_date, d.expires_on, d.note, userId, id)
     .run();
   return (res.meta.changes ?? 0) > 0;
+}
+
+export async function deleteMembership(db: D1Database, userId: number, id: number): Promise<boolean> {
+  const res = await db.prepare('DELETE FROM memberships WHERE user_id=? AND id=?').bind(userId, id).run();
+  return (res.meta.changes ?? 0) > 0;
+}
+
+/** Живые записи клиентов, у которых есть абонемент (all=true) или одного клиента, в порядке времени. */
+async function getSlotsForMembershipClients(db: D1Database, userId: number, clientName?: string): Promise<ApptSlot[]> {
+  const r = clientName
+    ? await db
+        .prepare(
+          `SELECT id, client_name, date, start_time, price FROM appointments
+           WHERE user_id = ? AND status = 'scheduled' AND client_name = ? ORDER BY date, start_time, id`,
+        )
+        .bind(userId, clientName)
+        .all<ApptSlot>()
+    : await db
+        .prepare(
+          `SELECT id, client_name, date, start_time, price FROM appointments
+           WHERE user_id = ? AND status = 'scheduled'
+             AND client_name IN (SELECT client_name FROM memberships WHERE user_id = ?)
+           ORDER BY date, start_time, id`,
+        )
+        .bind(userId, userId)
+        .all<ApptSlot>();
+  return r.results;
+}
+
+/** Абонементы клиента с остатками и итог по ним. */
+export async function getClientMemberships(
+  db: D1Database,
+  userId: number,
+  clientName: string,
+  nowDate: string,
+  nowTime: string,
+): Promise<{ views: MembershipView[]; summary: ClientMembershipSummary }> {
+  const r = await db
+    .prepare(`SELECT ${MEMBERSHIP_COLS} FROM memberships WHERE user_id = ? AND client_name = ? ORDER BY start_date DESC, id DESC`)
+    .bind(userId, clientName)
+    .all<MembershipRow>();
+  if (!r.results.length) return { views: [], summary: summarize([]) };
+  const { views } = allocate(r.results, await getSlotsForMembershipClients(db, userId, clientName), nowDate, nowTime);
+  return { views, summary: summarize(views) };
+}
+
+/** Какие записи покрыты абонементами (по всем клиентам тренера) — для расчёта доходов. */
+export async function getMembershipCoverage(
+  db: D1Database,
+  userId: number,
+  nowDate: string,
+  nowTime: string,
+): Promise<{ covered: ApptSlot[] }> {
+  const memberships = await getAllMemberships(db, userId);
+  if (!memberships.length) return { covered: [] };
+  const slots = await getSlotsForMembershipClients(db, userId);
+  const { covered } = allocate(memberships, slots, nowDate, nowTime);
+  return { covered: slots.filter((s) => covered.has(s.id)) };
+}
+
+/** Продажи абонементов с ценой по дням за период (день продажи = start_date). */
+export async function getMembershipSalesByDay(
+  db: D1Database,
+  userId: number,
+  from: string,
+  to: string,
+): Promise<ExpenseDayRow[]> {
+  const r = await db
+    .prepare(
+      `SELECT start_date AS date, SUM(price) AS sum, COUNT(*) AS count FROM memberships
+       WHERE user_id = ? AND price IS NOT NULL AND start_date >= ? AND start_date <= ?
+       GROUP BY start_date`,
+    )
+    .bind(userId, from, to)
+    .all<ExpenseDayRow>();
+  return r.results;
 }
 
 export async function deleteClient(db: D1Database, userId: number, id: number): Promise<boolean> {

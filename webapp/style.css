@@ -689,6 +689,43 @@ body {
   box-shadow: 0 0 0 3px var(--accent-pink-soft);
 }
 
+/* Повтор записи: дни недели и сводка */
+.repeat-toggle-row { margin-bottom: 8px; }
+.weekday-chips {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0 14px;
+}
+.weekday-chip {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid var(--accent-pink-border);
+  background: transparent;
+  color: var(--text-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.weekday-chip.active {
+  background: var(--powder-600);
+  border-color: var(--powder-600);
+  color: #fff;
+}
+#repeat-summary { display: block; margin-top: 8px; }
+#repeat-summary.warn { color: #d33; font-weight: 600; }
+.appt-series-mark { margin-left: 6px; font-size: 13px; }
+
+.participant-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.participant-row .form-input { flex: 1; }
+#btn-add-participant { margin-top: 2px; }
+
 .form-hint {
   display: block;
   font-size: 12px;
@@ -1945,3 +1982,41 @@ body {
   opacity: 0.85;
 }
 .admin-badge.is-banned { background: var(--accent-pink-soft); }
+
+/* Абонементы: карточка клиента и подсказка в форме записи */
+.client-membership-section { margin-top: 16px; }
+.client-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.client-section-head h4 { margin: 0; }
+.membership-item {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-pink-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+}
+.membership-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.membership-item-title { font-weight: 600; }
+.membership-state { font-size: 12px; font-weight: 600; color: var(--hint-color); white-space: nowrap; }
+.membership-state.is-active { color: #2e9d57; }
+.membership-state.is-warn { color: #d33; }
+.membership-item-meta { margin-top: 4px; font-size: 13px; color: var(--hint-color); }
+.membership-item-actions { margin-top: 6px; display: flex; gap: 14px; }
+.membership-item-actions button {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 13px;
+  color: var(--link-color, var(--text-color));
+  cursor: pointer;
+}
+.membership-badge.warn { color: #d33; }
