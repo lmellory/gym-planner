@@ -108,22 +108,12 @@ async function openSettings() {
     const backupTime = document.getElementById('setting-backup-time');
     const birthdayTime = document.getElementById('setting-birthday-time');
     const currencyInput = document.getElementById('setting-currency');
-    const coachInput = document.getElementById('setting-coach-name');
-    const gymInput = document.getElementById('setting-gym-name');
-    const buttonInput = document.getElementById('setting-button-label');
-    const greetingInput = document.getElementById('setting-greeting');
-    const styleSelect = document.getElementById('setting-notify-style');
     if (backupCheck) backupCheck.checked = s.backup_enabled !== false;
     if (noteCheck) noteCheck.checked = !!s.notify_note;
     if (summaryCheck) summaryCheck.checked = s.notify_summary !== false;
     if (backupTime) backupTime.value = s.backup_time || '21:00';
     if (birthdayTime) birthdayTime.value = s.birthday_time || '10:00';
     if (currencyInput) currencyInput.value = s.currency || '';
-    if (coachInput) coachInput.value = s.coach_name || '';
-    if (gymInput) gymInput.value = s.gym_name || '';
-    if (buttonInput) buttonInput.value = s.button_label || '';
-    if (greetingInput) greetingInput.value = s.greeting || '';
-    if (styleSelect) styleSelect.value = s.notify_style === 'short' ? 'short' : 'full';
     if (enabledCheck) enabledCheck.checked = !!s.notify_enabled;
     if (newApptCheck) newApptCheck.checked = s.notify_new_appt !== false;
     if (timeInput) timeInput.value = s.notify_time || '22:00';
@@ -166,11 +156,6 @@ async function saveSettings() {
   const backup_time = document.getElementById('setting-backup-time')?.value || '21:00';
   const birthday_time = document.getElementById('setting-birthday-time')?.value || '10:00';
   const currency = (document.getElementById('setting-currency')?.value || '').trim();
-  const coach_name = (document.getElementById('setting-coach-name')?.value || '').trim();
-  const gym_name = (document.getElementById('setting-gym-name')?.value || '').trim();
-  const button_label = (document.getElementById('setting-button-label')?.value || '').trim();
-  const greeting = (document.getElementById('setting-greeting')?.value || '').trim();
-  const notify_style = document.getElementById('setting-notify-style')?.value === 'short' ? 'short' : 'full';
 
   try {
     const saved = await api('/settings', {
@@ -189,11 +174,6 @@ async function saveSettings() {
         backup_time,
         birthday_time,
         currency,
-        coach_name,
-        gym_name,
-        button_label,
-        greeting,
-        notify_style,
       }),
     });
     CURRENCY = saved.currency || DEFAULT_CURRENCY;

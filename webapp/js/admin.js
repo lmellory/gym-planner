@@ -41,6 +41,9 @@ function renderAdminTrainers(trainers) {
           </div>
           <div class="client-card-contacts">${m.username ? '@' + escapeHtml(m.username) + ' · ' : ''}ID ${m.user_id}</div>
           <div class="client-card-note">Записей: ${m.appointments}, впереди: ${m.upcoming}, клиентов: ${m.clients}${last}</div>
+          <div style="margin-top: 10px;">
+            <button type="button" class="btn btn-secondary btn-small" data-personal="${m.user_id}">🎨 Персонализация</button>
+          </div>
         </div>`;
     })
     .join('');
@@ -48,6 +51,13 @@ function renderAdminTrainers(trainers) {
     el.addEventListener('click', () => {
       const m = trainers.find((x) => String(x.user_id) === el.dataset.id);
       if (m) enterActAs(m);
+    });
+  });
+  list.querySelectorAll('[data-personal]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation(); // иначе откроется режим «правка за тренера»
+      const m = trainers.find((x) => String(x.user_id) === btn.dataset.personal);
+      if (m) openTrainerPersonal(m.user_id, trainerLabel(m));
     });
   });
 }
@@ -108,4 +118,69 @@ document.getElementById('btn-open-admin')?.addEventListener('click', () => {
   openAdmin();
 });
 document.getElementById('btn-act-as-exit')?.addEventListener('click', exitActAs);
+
+// ===== Персонализация тренера (админ задаёт за тренера) =====
+// Тренер этих полей в своих настройках не видит: имя, зал, приветствие и стиль расписания задаёт админ.
+// Запросы идут с X-Act-As, поэтому api() правит данные выбранного тренера, а не администратора.
+let personalTrainerId = 0;
+let personalSettings = null;
+
+function closeTrainerPersonal() {
+  const modal = document.getElementById('modal-trainer-personal');
+  if (modal) modal.style.display = 'none';
+  personalTrainerId = 0;
+  personalSettings = null;
+}
+
+async function openTrainerPersonal(userId, label) {
+  const modal = document.getElementById('modal-trainer-personal');
+  if (!modal) return;
+  try {
+    const s = await api('/settings', { headers: { 'X-Act-As': String(userId) } });
+    personalTrainerId = userId;
+    personalSettings = s;
+    const title = document.getElementById('modal-trainer-personal-title');
+    if (title) title.textContent = label;
+    document.getElementById('personal-coach-name').value = s.coach_name || '';
+    document.getElementById('personal-gym-name').value = s.gym_name || '';
+    document.getElementById('personal-button-label').value = s.button_label || '';
+    document.getElementById('personal-greeting').value = s.greeting || '';
+    document.getElementById('personal-notify-style').value = s.notify_style === 'short' ? 'short' : 'full';
+    modal.style.display = 'flex';
+  } catch (err) {
+    console.error('не удалось загрузить персонализацию', err);
+    showToast('Не удалось загрузить персонализацию');
+  }
+}
+
+async function saveTrainerPersonal() {
+  if (!personalTrainerId || !personalSettings) return;
+  const value = (id) => (document.getElementById(id)?.value || '').trim();
+  const payload = {
+    ...personalSettings,
+    coach_name: value('personal-coach-name'),
+    gym_name: value('personal-gym-name'),
+    button_label: value('personal-button-label'),
+    greeting: value('personal-greeting'),
+    notify_style: document.getElementById('personal-notify-style')?.value === 'short' ? 'short' : 'full',
+  };
+  try {
+    await api('/settings', {
+      method: 'PUT',
+      headers: { 'X-Act-As': String(personalTrainerId) },
+      body: JSON.stringify(payload),
+    });
+    haptic('success');
+    showToast('Персонализация сохранена ✅');
+    closeTrainerPersonal();
+  } catch (err) {
+    console.error('не удалось сохранить персонализацию', err);
+    showToast('Не удалось сохранить');
+  }
+}
+
+document.getElementById('btn-close-trainer-personal')?.addEventListener('click', closeTrainerPersonal);
+document.getElementById('btn-cancel-trainer-personal')?.addEventListener('click', closeTrainerPersonal);
+document.getElementById('btn-save-trainer-personal')?.addEventListener('click', saveTrainerPersonal);
+
 

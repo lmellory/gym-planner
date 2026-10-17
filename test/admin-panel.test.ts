@@ -85,11 +85,13 @@ describe('чистые функции', () => {
     expect(accessState({ added: 1, banned: 1 })).toBe('banned');
   });
 
-  it('actAsAllowed: все действия с записями; из остального только чтение нужного для формы', () => {
+  it('actAsAllowed: все действия с записями и настройками; из остального только чтение нужного для формы', () => {
     for (const m of ['GET', 'POST', 'PUT', 'DELETE']) expect(actAsAllowed(m, '/api/appointments')).toBe(true);
     expect(actAsAllowed('POST', '/api/appointments/check')).toBe(true);
     expect(actAsAllowed('DELETE', '/api/appointments/5')).toBe(true);
-    for (const p of ['/api/days', '/api/days/slots', '/api/search', '/api/clients', '/api/clients/3', '/api/prices', '/api/settings', '/api/notes/2026-10-14', '/api/memberships/summary']) {
+    // Настройки тренера админ правит за него: там персонализация и рабочий график
+    for (const m of ['GET', 'PUT']) expect(actAsAllowed(m, '/api/settings')).toBe(true);
+    for (const p of ['/api/days', '/api/days/slots', '/api/search', '/api/clients', '/api/clients/3', '/api/prices', '/api/notes/2026-10-14', '/api/memberships/summary']) {
       expect(actAsAllowed('GET', p)).toBe(true);
       expect(actAsAllowed('PUT', p)).toBe(false);
       expect(actAsAllowed('POST', p)).toBe(false);
@@ -220,13 +222,43 @@ describe('правка записей за тренера (X-Act-As)', () => {
     }
   });
 
-  it('всё остальное закрыто: доходы, траты, клиенты, настройки, заметки, импорт, экспорт, сама админка', async () => {
+  it('админ задаёт персонализацию тренера: свои тексты и стиль расписания', async () => {
+    const get = await apiAs(ADMIN2, OTHER, 'GET', '/api/settings');
+    expect(get.status).toBe(200);
+
+    const put = await apiAs(ADMIN2, OTHER, 'PUT', '/api/settings', {
+      ...get.json,
+      coach_name: 'Саша',
+      gym_name: 'Зал «Атлет»',
+      greeting: 'Пиши в любое время',
+      button_label: 'Открыть зал',
+      notify_style: 'short',
+    });
+    expect(put.status).toBe(200);
+    expect(put.json).toMatchObject({
+      coach_name: 'Саша',
+      gym_name: 'Зал «Атлет»',
+      greeting: 'Пиши в любое время',
+      button_label: 'Открыть зал',
+      notify_style: 'short',
+    });
+
+    // Настройки легли именно тренеру, а не администратору
+    expect((await apiAs(OTHER, null, 'GET', '/api/settings')).json.coach_name).toBe('Саша');
+    expect((await apiAs(ADMIN2, null, 'GET', '/api/settings')).json.coach_name).toBeNull();
+
+    // Тренер по-прежнему может менять свои обычные настройки сам
+    const own = await apiAs(OTHER, null, 'PUT', '/api/settings', { ...(await apiAs(OTHER, null, 'GET', '/api/settings')).json, notify_time: '21:30' });
+    expect(own.status).toBe(200);
+    expect(own.json.coach_name).toBe('Саша'); // персонализация не затёрлась
+  });
+
+  it('всё остальное закрыто: доходы, траты, клиенты, заметки, прайс, импорт, экспорт, сама админка', async () => {
     const blocked: Array<[string, string, unknown?]> = [
       ['GET', '/api/stats?period=week'],
       ['GET', '/api/expenses?from=2026-10-01&to=2026-10-31'],
       ['DELETE', '/api/expenses/1'],
       ['POST', '/api/clients', { name: 'Х' }],
-      ['PUT', '/api/settings', { notify_time: '21:00' }],
       ['PUT', '/api/prices', { personal: 1 }],
       ['PUT', '/api/notes/2026-10-14', { text: 'x' }],
       ['POST', '/api/import', {}],
