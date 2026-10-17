@@ -312,6 +312,78 @@ describe('восстановление из копии', () => {
   });
 });
 
+describe('повторяющиеся записи: форма и удаление серии', () => {
+  const rows = async () =>
+    (await calls(OWNER, '/api/appointments?from=2026-10-01&to=2026-11-30')).filter((x: any) => x.client_name === 'Серия');
+  const fire = (s: string, type: string) => $(s).dispatchEvent(new w.Event(type, { bubbles: true }));
+
+  it('блок «Повторять» есть у новой записи; день недели подставляется от даты, сводка считает записи', async () => {
+    click('#btn-add-appt');
+    await until(() => $('#screen-form').classList.contains('active'));
+    expect($('#repeat-group').style.display).toBe('block');
+    expect($('#repeat-options').style.display).toBe('none');
+
+    setVal('#form-appt-client', 'Серия'); setVal('#form-appt-date', '2026-10-15'); setVal('#form-appt-start', '19:00');
+    $('#form-repeat-on').checked = true;
+    fire('#form-repeat-on', 'change');
+    expect($('#repeat-options').style.display).toBe('block');
+    expect($$('#repeat-weekdays .weekday-chip.active').map((b) => b.dataset.wd)).toEqual(['4']); // 15 октября — четверг
+
+    $('#repeat-weekdays .weekday-chip[data-wd="2"]').click(); // + вторник
+    setVal('#form-repeat-weeks', '2');
+    fire('#form-repeat-weeks', 'input');
+    // четверг 15, вторник 20, четверг 22 (вторник 13 уже прошёл)
+    expect(txt('#repeat-summary')).toBe('Будет создано записей: 3, с 15.10 по 22.10');
+
+    setVal('#form-repeat-weeks', '99');
+    fire('#form-repeat-weeks', 'input');
+    expect(txt('#repeat-summary')).toContain('от 1 до 26');
+    expect($('#repeat-summary').classList.contains('warn')).toBe(true);
+  });
+
+  it('сохранение создаёт серию из трёх записей с общим series_id и значком 🔁 в карточке', async () => {
+    setVal('#form-repeat-weeks', '2');
+    fire('#form-repeat-weeks', 'input');
+    click('#btn-submit-appt');
+    await until(() => $('#screen-main').classList.contains('active'));
+    await vi.waitFor(async () => expect(await rows()).toHaveLength(3), { timeout: 4000 });
+
+    const r = await rows();
+    expect(r.map((x: any) => x.date)).toEqual(['2026-10-15', '2026-10-20', '2026-10-22']);
+    expect(new Set(r.map((x: any) => x.series_id)).size).toBe(1);
+    expect(r[0].series_id).toBeTruthy();
+    expect(txt('#toast')).toContain('Добавлено записей: 3');
+    await vi.waitFor(() => {
+      const card = $$('.appointment-card').find((c) => c.dataset.id == r[0].id);
+      expect(card?.querySelector('.appt-series-mark')).toBeTruthy();
+    }, { timeout: 4000 });
+  });
+
+  it('при редактировании блок повтора скрыт; у записи серии удаление спрашивает область, «Отмена» ничего не удаляет', async () => {
+    const [first] = await rows();
+    $$('.appointment-card').find((c) => c.dataset.id == first.id).click();
+    await until(() => $('#screen-form').classList.contains('active') && $('#form-appt-client').value === 'Серия');
+    expect($('#repeat-group').style.display).toBe('none');
+    expect($('#participants-group').style.display).toBe('none');
+
+    w.prompt = () => null; // отказ от выбора
+    click('#btn-delete-appt');
+    await new Promise((r) => setTimeout(r, 60));
+    expect(await rows()).toHaveLength(3);
+    expect($('#screen-form').classList.contains('active')).toBe(true);
+  });
+
+  it('«Только эту запись» удаляет одну, остальные записи серии остаются', async () => {
+    const asked: string[] = [];
+    w.prompt = (m: string) => { asked.push(m); return '1'; };
+    click('#btn-delete-appt');
+    await until(() => $('#screen-main').classList.contains('active'));
+    await vi.waitFor(async () => expect(await rows()).toHaveLength(2), { timeout: 4000 });
+    expect(asked[0]).toContain('всю серию');
+    expect((await rows()).map((x: any) => x.date)).toEqual(['2026-10-20', '2026-10-22']);
+  });
+});
+
 describe('здоровье страницы', () => {
   it('за весь сценарий не было ошибок скриптов', () => {
     expect(errors).toEqual([]);

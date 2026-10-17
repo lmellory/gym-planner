@@ -592,7 +592,7 @@ function renderAppointmentsList() {
       ${whoHtml}
       <div class="appt-card-service">
         <img src="/assets/service-${a.service}.png" class="appt-service-icon" alt="">
-        <strong>${serviceName}</strong>
+        <strong>${serviceName}</strong>${a.series_id ? '<span class="appt-series-mark" title="Повторяющаяся запись">🔁</span>' : ''}
       </div>
       ${commentHtml}
     `;
@@ -639,6 +639,8 @@ function openForm(appt = null) {
 
   if (conflictAlert) conflictAlert.style.display = 'none';
   resetParticipants();
+  resetRepeat();
+  state.editingSeries = !!(appt && appt.id && appt.series_id);
 
   if (appt && appt.id) {
     if (formTitle) formTitle.textContent = 'Редактирование записи';
@@ -683,6 +685,7 @@ function openForm(appt = null) {
   }
 
   updateServiceUI();
+  updateRepeatUI();
   updateClientMatchBadge();
   goScreen('form');
   checkConflicts();
@@ -719,6 +722,7 @@ function updateServiceUI() {
     btn.classList.toggle('active', btn.dataset.service === selectedService);
   });
   updateParticipantsUI();
+  updateRepeatSummary();
 }
 
 // ===== Участники сплита и группы =====
@@ -737,12 +741,16 @@ function addParticipantRow(value = '') {
   input.autocomplete = 'off';
   input.setAttribute('list', 'clients-datalist');
   input.value = value;
+  input.addEventListener('input', () => updateRepeatSummary());
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'btn-clear';
   remove.title = 'Убрать участника';
   remove.textContent = '✕';
-  remove.addEventListener('click', () => row.remove());
+  remove.addEventListener('click', () => {
+    row.remove();
+    updateRepeatSummary();
+  });
   row.append(input, remove);
   list.appendChild(row);
   return input;
@@ -769,6 +777,125 @@ function resetParticipants() {
 document.getElementById('btn-add-participant')?.addEventListener('click', () => {
   haptic('light');
   addParticipantRow()?.focus();
+  updateRepeatSummary();
+});
+
+// ===== Повтор записи: «вторник и четверг на N недель» =====
+const MAX_REPEAT_WEEKS = 26;
+const MAX_SERIES_RECORDS = 100; // столько же разрешает сервер (даты × участники)
+let repeatDaysTouched = false;  // тренер сам выбирал дни: тогда не подставляем день недели от даты
+
+// 1 = Пн … 7 = Вс
+function isoWeekday(dateStr) {
+  return ((parseDate(dateStr).getDay() + 6) % 7) + 1;
+}
+
+function getRepeatDays() {
+  return [...document.querySelectorAll('#repeat-weekdays .weekday-chip.active')].map((b) => Number(b.dataset.wd));
+}
+
+// Те же правила, что на сервере (src/lib/recurrence.ts): недели Пн–Вс, начиная с недели первой записи,
+// выбранные дни не раньше даты первой записи.
+function expandRepeatDates(startDate, weekdays, weeks) {
+  const monday = fmt(mondayOf(parseDate(startDate)));
+  const dates = [];
+  for (let w = 0; w < weeks; w++) {
+    for (const wd of weekdays) {
+      const d = addDays(monday, w * 7 + wd - 1);
+      if (d >= startDate) dates.push(d);
+    }
+  }
+  return dates;
+}
+
+function updateRepeatUI() {
+  const group = document.getElementById('repeat-group');
+  if (group) group.style.display = state.editingAppointmentId ? 'none' : 'block';
+}
+
+function resetRepeat() {
+  const on = document.getElementById('form-repeat-on');
+  if (on) on.checked = false;
+  const options = document.getElementById('repeat-options');
+  if (options) options.style.display = 'none';
+  document.querySelectorAll('#repeat-weekdays .weekday-chip').forEach((b) => b.classList.remove('active'));
+  const weeks = document.getElementById('form-repeat-weeks');
+  if (weeks) weeks.value = '4';
+  repeatDaysTouched = false;
+  const summary = document.getElementById('repeat-summary');
+  if (summary) summary.textContent = '';
+}
+
+// Пока тренер не выбирал дни сам, отмечаем день недели выбранной даты
+function syncRepeatDefaultDay() {
+  if (repeatDaysTouched) return;
+  const date = document.getElementById('form-appt-date')?.value;
+  if (!date) return;
+  const wd = isoWeekday(date);
+  document.querySelectorAll('#repeat-weekdays .weekday-chip').forEach((b) => {
+    b.classList.toggle('active', Number(b.dataset.wd) === wd);
+  });
+}
+
+function updateRepeatSummary() {
+  const el = document.getElementById('repeat-summary');
+  if (!el) return;
+  if (!document.getElementById('form-repeat-on')?.checked) {
+    el.textContent = '';
+    return;
+  }
+  const warn = (text) => {
+    el.textContent = text;
+    el.classList.add('warn');
+  };
+  el.classList.remove('warn');
+
+  const date = document.getElementById('form-appt-date')?.value;
+  const weeks = Number(document.getElementById('form-repeat-weeks')?.value);
+  const days = getRepeatDays();
+  if (!date) return warn('Укажите дату первой записи');
+  if (!days.length) return warn('Выберите хотя бы один день недели');
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_REPEAT_WEEKS) {
+    return warn(`Число недель: от 1 до ${MAX_REPEAT_WEEKS}`);
+  }
+
+  const dates = expandRepeatDates(date, days, weeks);
+  if (!dates.length) return warn('В выбранный период нет подходящих дней');
+
+  const multi = selectedService === 'split' || selectedService === 'group';
+  const people = 1 + (multi ? getParticipants().length : 0);
+  const total = dates.length * people;
+  const short = (d) => d.split('-').reverse().slice(0, 2).join('.');
+  const range = dates.length > 1 ? `с ${short(dates[0])} по ${short(dates[dates.length - 1])}` : `на ${short(dates[0])}`;
+  if (total > MAX_SERIES_RECORDS) {
+    return warn(`Слишком много записей: ${total} (максимум ${MAX_SERIES_RECORDS}). Уменьшите число недель, дней или участников.`);
+  }
+  el.textContent = people > 1
+    ? `Будет создано записей: ${total} (${dates.length} занятий × ${people} чел.), ${range}`
+    : `Будет создано записей: ${total}, ${range}`;
+}
+
+document.getElementById('form-repeat-on')?.addEventListener('change', (e) => {
+  haptic('light');
+  const options = document.getElementById('repeat-options');
+  if (options) options.style.display = e.target.checked ? 'block' : 'none';
+  if (e.target.checked) syncRepeatDefaultDay();
+  updateRepeatSummary();
+});
+
+document.querySelectorAll('#repeat-weekdays .weekday-chip').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    haptic('light');
+    repeatDaysTouched = true;
+    btn.classList.toggle('active');
+    updateRepeatSummary();
+  });
+});
+
+document.getElementById('form-repeat-weeks')?.addEventListener('input', updateRepeatSummary);
+document.getElementById('form-appt-date')?.addEventListener('change', () => {
+  syncRepeatDefaultDay();
+  updateRepeatSummary();
 });
 
 // Подстановка цены из прайса при смене услуги. Цену, которую тренер вписал вручную, не трогаем:
@@ -869,6 +996,17 @@ async function saveAppointment() {
     if (!Number.isInteger(price) || price < 0) return showToast('Цена — целое число, например 800');
   }
 
+  let repeat = null;
+  if (!state.editingAppointmentId && document.getElementById('form-repeat-on')?.checked) {
+    const weekdays = getRepeatDays();
+    const weeks = Number(document.getElementById('form-repeat-weeks')?.value);
+    if (!weekdays.length) return showToast('Выберите дни недели для повтора');
+    if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_REPEAT_WEEKS) {
+      return showToast(`Число недель: от 1 до ${MAX_REPEAT_WEEKS}`);
+    }
+    repeat = { weekdays, weeks };
+  }
+
   const payload = {
     date,
     start_time,
@@ -890,6 +1028,7 @@ async function saveAppointment() {
     } else {
       const participants = selectedService === 'split' || selectedService === 'group' ? getParticipants() : [];
       if (participants.length) payload.participants = participants;
+      if (repeat) payload.repeat = repeat;
       const res = await api('/appointments', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -914,20 +1053,53 @@ async function saveAppointment() {
 }
 
 // Удаление записи
+// Повторяющаяся запись: что удалять — только эту, эту и все следующие или всю серию
+function chooseSeriesDeleteScope(callback) {
+  const options = [
+    { id: 'this', text: 'Только эту запись' },
+    { id: 'following', text: 'Эту и все следующие' },
+    { id: 'all', text: 'Всю серию' },
+  ];
+  if (tg?.showPopup && (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.2'))) {
+    tg.showPopup(
+      {
+        title: 'Повторяющаяся запись',
+        message: 'Что удалить?',
+        buttons: options.map((o) => ({ id: o.id, type: o.id === 'all' ? 'destructive' : 'default', text: o.text })),
+      },
+      (id) => callback(id || null),
+    );
+    return;
+  }
+  const answer = window.prompt('Что удалить?\n1 — только эту запись\n2 — эту и все следующие\n3 — всю серию', '1');
+  callback({ 1: 'this', 2: 'following', 3: 'all' }[String(answer || '').trim()] || null);
+}
+
+async function runDeleteAppointment(id, scope) {
+  try {
+    const query = scope && scope !== 'this' ? `?scope=${scope}` : '';
+    const res = await api(`/appointments/${id}${query}`, { method: 'DELETE' });
+    haptic('success');
+    showToast(res?.deleted > 1 ? `Удалено записей: ${res.deleted}` : 'Запись удалена');
+    goScreen('main');
+    await loadWeekSummary();
+    await loadSelectedDay();
+  } catch (err) {
+    console.error('Ошибка удаления записи:', err);
+  }
+}
+
 async function deleteAppointment() {
-  if (!state.editingAppointmentId) return;
-  confirmDialog('Удалить эту запись безвозвратно?', async (confirmed) => {
-    if (!confirmed) return;
-    try {
-      await api(`/appointments/${state.editingAppointmentId}`, { method: 'DELETE' });
-      haptic('success');
-      showToast('Запись удалена');
-      goScreen('main');
-      await loadWeekSummary();
-      await loadSelectedDay();
-    } catch (err) {
-      console.error('Ошибка удаления записи:', err);
-    }
+  const id = state.editingAppointmentId;
+  if (!id) return;
+  if (state.editingSeries) {
+    chooseSeriesDeleteScope((scope) => {
+      if (scope) runDeleteAppointment(id, scope);
+    });
+    return;
+  }
+  confirmDialog('Удалить эту запись безвозвратно?', (confirmed) => {
+    if (confirmed) runDeleteAppointment(id, 'this');
   });
 }
 
@@ -1168,7 +1340,7 @@ function renderSearchResults(items) {
       </div>
       <div class="appt-card-client">${escapeHtml(a.client_name)}</div>
       ${whoHtml}
-      <div class="appt-card-service">🏋️ <strong>${serviceName}</strong></div>
+      <div class="appt-card-service">🏋️ <strong>${serviceName}</strong>${a.series_id ? '<span class="appt-series-mark" title="Повторяющаяся запись">🔁</span>' : ''}</div>
       ${a.comment ? `<div class="appt-card-comment">💬 ${escapeHtml(a.comment)}</div>` : ''}
     `;
 

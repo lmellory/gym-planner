@@ -689,6 +689,34 @@ body {
   box-shadow: 0 0 0 3px var(--accent-pink-soft);
 }
 
+/* Повтор записи: дни недели и сводка */
+.repeat-toggle-row { margin-bottom: 8px; }
+.weekday-chips {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0 14px;
+}
+.weekday-chip {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid var(--accent-pink-border);
+  background: transparent;
+  color: var(--text-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.weekday-chip.active {
+  background: var(--powder-600);
+  border-color: var(--powder-600);
+  color: #fff;
+}
+#repeat-summary { display: block; margin-top: 8px; }
+#repeat-summary.warn { color: #d33; font-weight: 600; }
+.appt-series-mark { margin-left: 6px; font-size: 13px; }
+
 .participant-row {
   display: flex;
   gap: 8px;
