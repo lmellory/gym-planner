@@ -9,6 +9,13 @@ import { api, createTestDb, makeEnv, NOW, OWNER, seedWeek, signInitData, stubTel
 
 const read = (f: string) => readFileSync(fileURLToPath(new URL('../webapp/' + f, import.meta.url)), 'utf8');
 
+/**
+ * Файлы приложения в том же порядке, в каком их подключает index.html.
+ * Так тест не разойдётся с продакшеном, если список модулей изменится.
+ */
+const appFiles = () =>
+  [...read('index.html').matchAll(/<script[^>]*src="\/([^"?]+)[^"]*"[^>]*><\/script>/g)].map((m) => m[1]);
+
 let w: any;
 let env: any;
 let tg: TgCall[];
@@ -52,7 +59,8 @@ beforeAll(async () => {
     );
   };
   w.addEventListener('error', (e: any) => errors.push(e.message));
-  w.eval(read('app.js'));
+  // Один eval на все файлы — как один <script>: у скриптов общая глобальная область, сплит на этом и держится
+  w.eval(appFiles().map(read).join('\n'));
   await new Promise((r) => setTimeout(r, 150)); // первая загрузка недели и дня
 });
 
