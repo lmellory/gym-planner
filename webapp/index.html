@@ -14,7 +14,7 @@
       }
     } catch (e) {}
   </script>
-  <link rel="stylesheet" href="/style.css?v=5">
+  <link rel="stylesheet" href="/style.css?v=6">
 </head>
 <body>
   <div id="app">
@@ -242,6 +242,29 @@
             <div id="participants-list"></div>
             <button type="button" class="btn-secondary" id="btn-add-participant">➕ Добавить участника</button>
             <small class="form-hint">Каждому участнику создастся своя запись на это же время.</small>
+          </div>
+
+          <!-- Повтор: «вторник и четверг на N недель» (только для новой записи) -->
+          <div class="form-group" id="repeat-group" style="display: none;">
+            <div class="setting-toggle-row repeat-toggle-row">
+              <label for="form-repeat-on" class="toggle-label">🔁 Повторять каждую неделю</label>
+              <input type="checkbox" id="form-repeat-on" class="toggle-checkbox">
+            </div>
+            <div id="repeat-options" style="display: none;">
+              <label>Дни недели</label>
+              <div class="weekday-chips" id="repeat-weekdays">
+                <button type="button" class="weekday-chip" data-wd="1">Пн</button>
+                <button type="button" class="weekday-chip" data-wd="2">Вт</button>
+                <button type="button" class="weekday-chip" data-wd="3">Ср</button>
+                <button type="button" class="weekday-chip" data-wd="4">Чт</button>
+                <button type="button" class="weekday-chip" data-wd="5">Пт</button>
+                <button type="button" class="weekday-chip" data-wd="6">Сб</button>
+                <button type="button" class="weekday-chip" data-wd="7">Вс</button>
+              </div>
+              <label for="form-repeat-weeks">На сколько недель</label>
+              <input type="number" id="form-repeat-weeks" class="form-input" inputmode="numeric" min="1" max="26" step="1" value="4">
+              <small class="form-hint" id="repeat-summary"></small>
+            </div>
           </div>
 
           <!-- Цена -->
@@ -816,6 +839,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 </html>

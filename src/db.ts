@@ -214,7 +214,7 @@ export async function insertAppointment(
   const res = await db
     .prepare(
       `INSERT INTO appointments (user_id, date, start_time, end_time, client_name, who, service,
-         comment, price, status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+         comment, price, status, series_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .bind(
       userId,
@@ -227,6 +227,7 @@ export async function insertAppointment(
       data.comment,
       data.price ?? null,
       data.status ?? 'scheduled',
+      data.series_id ?? null,
     )
     .run();
   return res.meta.last_row_id as number;
@@ -328,6 +329,29 @@ export async function deleteAppointment(db: D1Database, userId: number, id: numb
     .bind(userId, id)
     .run();
   return (res.meta.changes ?? 0) > 0;
+}
+
+/**
+ * Удаляет запись серии: 'following' — эту и все следующие, 'all' — всю серию (в том числе прошедшие).
+ * У одиночной записи (без серии) удаляется только она. Возвращает, сколько записей удалено.
+ */
+export async function deleteAppointmentScope(
+  db: D1Database,
+  userId: number,
+  id: number,
+  scope: 'following' | 'all',
+): Promise<number> {
+  const a = await getAppointment(db, userId, id);
+  if (!a) return 0;
+  if (!a.series_id) return (await deleteAppointment(db, userId, id)) ? 1 : 0;
+  const res =
+    scope === 'all'
+      ? await db.prepare('DELETE FROM appointments WHERE user_id=? AND series_id=?').bind(userId, a.series_id).run()
+      : await db
+          .prepare('DELETE FROM appointments WHERE user_id=? AND series_id=? AND date >= ?')
+          .bind(userId, a.series_id, a.date)
+          .run();
+  return res.meta.changes ?? 0;
 }
 
 export async function getDayNote(db: D1Database, userId: number, date: string): Promise<string> {

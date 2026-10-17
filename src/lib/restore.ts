@@ -17,6 +17,7 @@ export interface RestoreAppointment {
   date: string; start_time: string; end_time: string | null; client_name: string; who: string | null;
   service: string;
   comment: string | null; price: number | null; status: string;
+  series_id?: string; // серия повторяющихся записей (если в копии есть корректный ID)
 }
 export interface RestoreClient { name: string; phone: string | null; telegram: string | null; notes: string | null; birthday: string | null }
 export interface RestoreExpense { date: string; name: string; amount: number }
@@ -60,6 +61,7 @@ function sanitizeAppointment(r: any): RestoreAppointment | null {
     comment: str(r?.comment, 1000),
     price: price === undefined ? null : price,
     status: isStatus(r?.status) ? r.status : 'scheduled',
+    ...(typeof r?.series_id === 'string' && /^[\w-]{1,64}$/.test(r.series_id) ? { series_id: r.series_id } : {}),
   };
 }
 
@@ -180,10 +182,10 @@ export async function restoreBackup(db: D1Database, userId: number, tzFallback: 
       db
         .prepare(
           `INSERT INTO appointments (user_id, date, start_time, end_time, client_name, who, service,
-             comment, price, status) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+             comment, price, status, series_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         )
         .bind(userId, a.date, a.start_time, a.end_time, a.client_name, a.who, a.service,
-          a.comment, a.price, a.status),
+          a.comment, a.price, a.status, a.series_id ?? null),
     ),
     ...data.clients.map((c) =>
       db
