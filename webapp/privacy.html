@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Политика конфиденциальности — Ежедневник тренера</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #1a1a1a;
+      --hint: #6b7280;
+      --accent: #f2702a;
+      --card: #f7f7f8;
+      --line: #e5e7eb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #17212b;
+        --text: #f1f1f1;
+        --hint: #9aa4af;
+        --card: #202b36;
+        --line: #2c3945;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 18px 48px;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-text-size-adjust: 100%;
+    }
+    main { max-width: 680px; margin: 0 auto; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .logo {
+      width: 44px; height: 44px; border-radius: 12px; flex: 0 0 auto;
+      background: linear-gradient(160deg, #ff8a3d, #c64a0c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    h1 { font-size: 22px; margin: 0; line-height: 1.25; }
+    .updated { color: var(--hint); font-size: 13px; margin: 4px 0 22px; }
+    h2 { font-size: 17px; margin: 26px 0 8px; }
+    p, li { margin: 8px 0; }
+    ul { padding-left: 20px; }
+    a { color: var(--accent); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin: 14px 0;
+    }
+    .muted { color: var(--hint); font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 15px; }
+    td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td:first-child { color: var(--hint); width: 42%; padding-right: 12px; }
+    footer { margin-top: 32px; color: var(--hint); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="logo">🏋️</div>
+    <h1>Политика конфиденциальности</h1>
+  </div>
+  <p class="updated">Бот «Ежедневник тренера» и Telegram Mini App · обновлено 17 октября 2026</p>
+
+  <p>Этот документ описывает, какие данные обрабатывает бот и приложение «Ежедневник тренера»,
+     зачем они нужны и что с ними происходит.</p>
+
+  <h2>1. Кто обрабатывает данные</h2>
+  <p>Бот и приложение ведёт тренер — владелец аккаунта, которому выдан доступ администратором.
+     Технически сервис работает на Cloudflare Workers, данные хранятся в базе Turso (libSQL).</p>
+
+  <h2>2. Какие данные собираются</h2>
+  <table>
+    <tr>
+      <td>Данные Telegram</td>
+      <td>Числовой ID, имя и @username. Нужны, чтобы впустить вас в приложение и показать имя в интерфейсе.
+          Приходят из подписанных данных Telegram при открытии Mini App.</td>
+    </tr>
+    <tr>
+      <td>Данные тренера</td>
+      <td>Записи на тренировки, расписание, цены, доходы и траты, заметки, настройки уведомлений и персонализации.</td>
+    </tr>
+    <tr>
+      <td>Данные клиентов</td>
+      <td>Имя, телефон, ссылка на Telegram, дата рождения, заметки и история занятий.
+          Их вносит тренер, они нужны для ведения расписания и напоминаний.</td>
+    </tr>
+  </table>
+
+  <h2>3. Зачем это нужно</h2>
+  <ul>
+    <li>показывать расписание и записи;</li>
+    <li>присылать вечернее расписание, напоминания и поздравления с днём рождения;</li>
+    <li>считать доходы, траты и остатки абонементов;</li>
+    <li>делать резервные копии, чтобы данные не потерялись.</li>
+  </ul>
+
+  <h2>4. Кому передаются данные</h2>
+  <p>Никому не продаются и не передаются для рекламы. Обработка ограничена техническими исполнителями:</p>
+  <ul>
+    <li><strong>Telegram</strong> — доставка сообщений бота и вход в Mini App;</li>
+    <li><strong>Cloudflare</strong> — работа серверной части;</li>
+    <li><strong>Turso</strong> — хранение базы данных.</li>
+  </ul>
+
+  <h2>5. Сколько хранятся</h2>
+  <p>До удаления. Тренер может удалить записи, клиентов и траты в приложении.
+     Раз в неделю бот отправляет резервную копию в личный чат тренера — это единственная копия за пределами базы,
+     и она хранится в его переписке.</p>
+
+  <h2>6. Cookies и аналитика</h2>
+  <p>Cookies не используются, рекламных трекеров нет. В браузере сохраняется только служебная информация
+     интерфейса (например, выбранная тема и кэш файлов приложения).</p>
+
+  <h2>7. Ваши права</h2>
+  <p>Вы можете запросить удаление своих данных, написав администратору бота —
+     тому, кто выдал вам доступ. Данные клиентов удаляет тренер, который их внёс.</p>
+
+  <div class="card">
+    <p class="muted" style="margin:0">
+      Доступ к данным приложения защищён подписью Telegram: посторонний не может открыть чужие записи,
+      даже зная идентификатор. Резервные копии содержат персональные данные, поэтому храните их так же
+      аккуратно, как и остальные рабочие документы.
+    </p>
+  </div>
+
+  <h2>8. Изменения</h2>
+  <p>Если политика изменится, обновится дата в начале страницы.</p>
+
+  <footer>
+    © 2026 Ежедневник тренера · <a href="/">Открыть приложение</a>
+  </footer>
+</main>
+</body>
+</html>
