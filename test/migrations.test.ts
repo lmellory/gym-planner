@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createTestDb, MIGRATIONS_DIR, migrate, REPO_ROOT } from './helpers/harness';
+import { parseStatements } from '../scripts/migrate.js';
 
 let cleanup: Array<() => void> = [];
 afterEach(() => { cleanup.forEach((f) => f()); cleanup = []; });
@@ -101,5 +102,33 @@ describe('миграции', () => {
     expect(await columns(t.client, 'appointments')).not.toContain('temp_col');
     const broken = (await t.client.execute("SELECT COUNT(*) AS n FROM schema_migrations WHERE version='9999_broken'")).rows[0].n;
     expect(Number(broken)).toBe(0);
+  });
+});
+
+describe('parseStatements', () => {
+  it('не режет запрос по «;» внутри комментария', () => {
+    const sql = [
+      '-- заголовок; с точкой с запятой',
+      'CREATE TABLE t (',
+      '  a TEXT,   -- описание; с точкой запятой',
+      '  b TEXT',
+      ');',
+    ].join('\n');
+    const stmts = parseStatements(sql);
+    expect(stmts).toHaveLength(1);
+    expect(stmts[0]).toContain('CREATE TABLE t');
+    expect(stmts[0]).toContain('b TEXT');
+  });
+
+  it('не режет запрос по «;» внутри строкового литерала, включая экранированные кавычки', () => {
+    const stmts = parseStatements("INSERT INTO t VALUES ('x;y', 'он сказал ''привет; пока''');\nSELECT 2;");
+    expect(stmts).toHaveLength(2);
+    expect(stmts[0]).toContain("'x;y'");
+    expect(stmts[0]).toContain("''привет; пока''");
+    expect(stmts[1]).toBe('SELECT 2');
+  });
+
+  it('вырезает блочные комментарии и отбрасывает BEGIN/COMMIT', () => {
+    expect(parseStatements('BEGIN;\n/* a; b */\nSELECT 1;\nCOMMIT;')).toEqual(['SELECT 1']);
   });
 });

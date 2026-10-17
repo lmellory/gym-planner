@@ -30,14 +30,84 @@ function getConnection() {
   return { url: urlMatch[1].replace('libsql://', 'https://'), authToken: tokenMatch[1] };
 }
 
-/** Делит файл на отдельные запросы. BEGIN/COMMIT вырезаются: транзакцию открывает сам скрипт. */
+/**
+ * Делит файл на отдельные запросы.
+ * `;` внутри строковых литералов, кавычек-идентификаторов и комментариев разделителем не считается:
+ * иначе точка с запятой в обычном комментарии (`-- действие; NULL — бессрочный`) рвёт запрос пополам.
+ * Комментарии вырезаются, BEGIN/COMMIT отбрасываются: транзакцию открывает сам скрипт.
+ */
 export function parseStatements(sqlContent) {
-  const cleanSql = sqlContent
-    .split('\n')
-    .map((l) => (l.trim().startsWith('--') ? '' : l))
-    .join('\n');
-  return cleanSql
-    .split(';')
+  const statements = [];
+  let buf = '';
+  let i = 0;
+  const n = sqlContent.length;
+
+  while (i < n) {
+    const ch = sqlContent[i];
+
+    // -- комментарий до конца строки (перевод строки сохраняем)
+    if (ch === '-' && sqlContent[i + 1] === '-') {
+      const nl = sqlContent.indexOf('\n', i);
+      if (nl === -1) break;
+      i = nl;
+      continue;
+    }
+
+    // /* блочный комментарий */
+    if (ch === '/' && sqlContent[i + 1] === '*') {
+      const end = sqlContent.indexOf('*/', i + 2);
+      i = end === -1 ? n : end + 2;
+      continue;
+    }
+
+    // 'строка' с экранированием '' внутри
+    if (ch === "'") {
+      buf += ch;
+      i++;
+      while (i < n) {
+        const c = sqlContent[i];
+        buf += c;
+        if (c === "'") {
+          if (sqlContent[i + 1] === "'") {
+            buf += sqlContent[i + 1];
+            i += 2;
+            continue;
+          }
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+
+    // "идентификатор" и `идентификатор`
+    if (ch === '"' || ch === '`') {
+      const quote = ch;
+      buf += ch;
+      i++;
+      while (i < n) {
+        const c = sqlContent[i];
+        buf += c;
+        i++;
+        if (c === quote) break;
+      }
+      continue;
+    }
+
+    if (ch === ';') {
+      statements.push(buf);
+      buf = '';
+      i++;
+      continue;
+    }
+
+    buf += ch;
+    i++;
+  }
+  statements.push(buf);
+
+  return statements
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && !/^(BEGIN|COMMIT)$/i.test(s));
 }
