@@ -414,6 +414,11 @@ export async function updateUserSettings(
     currency?: string | null; // undefined — не менять, null — по умолчанию
     birthday_time?: string;
     backup_time?: string;
+    coach_name?: string | null;   // undefined — не менять, null — по умолчанию
+    gym_name?: string | null;
+    greeting?: string | null;
+    button_label?: string | null;
+    notify_style?: string;
   },
 ): Promise<UserRow> {
   const current = (await getUser(db, userId))!;
@@ -433,19 +438,26 @@ export async function updateUserSettings(
   const currency = settings.currency === undefined ? (current.currency ?? null) : settings.currency;
   const birthdayTime = settings.birthday_time ?? current.birthday_time ?? '10:00';
   const backupTime = settings.backup_time ?? current.backup_time ?? '21:00';
+  const coachName = settings.coach_name === undefined ? (current.coach_name ?? null) : settings.coach_name;
+  const gymName = settings.gym_name === undefined ? (current.gym_name ?? null) : settings.gym_name;
+  const greeting = settings.greeting === undefined ? (current.greeting ?? null) : settings.greeting;
+  const buttonLabel = settings.button_label === undefined ? (current.button_label ?? null) : settings.button_label;
+  const notifyStyle = settings.notify_style ?? current.notify_style ?? 'full';
 
   await db
     .prepare(
       `UPDATE users
        SET notify_enabled=?, notify_time=?, tz=?, notify_new_appt=?, notify_note=?, notify_summary=?,
            work_start_time=?, work_end_time=?, work_days=?, backup_enabled=?,
-           currency=?, birthday_time=?, backup_time=?
+           currency=?, birthday_time=?, backup_time=?,
+           coach_name=?, gym_name=?, greeting=?, button_label=?, notify_style=?
        WHERE user_id=?`,
     )
     .bind(
       notifyEnabled, notifyTime, tz, notifyNewAppt, notifyNote, notifySummary,
       workStart, workEnd, workDays, backupEnabled,
       currency, birthdayTime, backupTime,
+      coachName, gymName, greeting, buttonLabel, notifyStyle,
       userId,
     )
     .run();

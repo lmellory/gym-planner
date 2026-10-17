@@ -494,6 +494,38 @@
             <input type="text" id="setting-currency" class="form-input" maxlength="10" placeholder="руб.">
           </div>
 
+          <div class="settings-card-title" style="margin-top: 18px;">🎨 Персонализация</div>
+          <p class="settings-card-desc">Как бот обращается к вам и что пишет при первом запуске. Пустые поля — стандартные тексты.</p>
+
+          <div class="form-group">
+            <label for="setting-coach-name">Как к вам обращаться</label>
+            <input type="text" id="setting-coach-name" class="form-input" maxlength="40" placeholder="Имя из Telegram">
+          </div>
+
+          <div class="form-group">
+            <label for="setting-gym-name">Название зала или студии</label>
+            <input type="text" id="setting-gym-name" class="form-input" maxlength="60" placeholder="например, «Атлет»">
+          </div>
+
+          <div class="form-group">
+            <label for="setting-button-label">Подпись кнопки в боте</label>
+            <input type="text" id="setting-button-label" class="form-input" maxlength="40" placeholder="🏋️ Открыть ежедневник">
+          </div>
+
+          <div class="form-group">
+            <label for="setting-greeting">Текст приветствия на /start</label>
+            <textarea id="setting-greeting" class="form-input" rows="3" maxlength="500" placeholder="Если пусто — бот покажет стандартную инструкцию"></textarea>
+            <small class="form-hint">Заменяет длинную инструкцию при первом запуске. Обращение по имени добавится автоматически.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="setting-notify-style">Вечернее расписание</label>
+            <select id="setting-notify-style" class="form-input">
+              <option value="full">Подробно: время, клиенты, контакты, заметка</option>
+              <option value="short">Коротко: только время и имена</option>
+            </select>
+          </div>
+
           <button type="button" class="btn-primary" id="btn-save-settings">Сохранить настройки</button>
         </div>
 
@@ -889,14 +921,14 @@
 
   <!-- Модули подключаются обычными скриптами в этом порядке: у них общая глобальная область,
        поэтому порядок важен (core объявляет state и утилиты, app.js в конце — инициализация). -->
-  <script src="/js/core.js?v=8"></script>
-  <script src="/js/schedule.js?v=8"></script>
-  <script src="/js/appointment-form.js?v=8"></script>
-  <script src="/js/calendar-search.js?v=8"></script>
-  <script src="/js/notes-settings.js?v=8"></script>
-  <script src="/js/clients.js?v=8"></script>
-  <script src="/js/finance.js?v=8"></script>
-  <script src="/js/admin.js?v=8"></script>
-  <script src="/app.js?v=8"></script>
+  <script src="/js/core.js?v=9"></script>
+  <script src="/js/schedule.js?v=9"></script>
+  <script src="/js/appointment-form.js?v=9"></script>
+  <script src="/js/calendar-search.js?v=9"></script>
+  <script src="/js/notes-settings.js?v=9"></script>
+  <script src="/js/clients.js?v=9"></script>
+  <script src="/js/finance.js?v=9"></script>
+  <script src="/js/admin.js?v=9"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

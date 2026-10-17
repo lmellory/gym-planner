@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { AppVars, Env } from '../types';
 import { ensureUser, updateUserSettings } from '../db';
 import { isTime } from '../lib/time';
-import { cleanCurrency, MAX_CURRENCY_LENGTH, settingsView } from '../lib/settings';
+import { cleanCurrency, cleanText, MAX_BUTTON_LENGTH, MAX_CURRENCY_LENGTH, MAX_GREETING_LENGTH, MAX_GYM_LENGTH, MAX_NAME_LENGTH, settingsView } from '../lib/settings';
 
 export const settings = new Hono<{ Bindings: Env; Variables: AppVars }>();
 
@@ -32,6 +32,11 @@ settings.put('/', async (c) => {
     currency,
     birthday_time,
     backup_time,
+    coach_name,
+    gym_name,
+    greeting,
+    button_label,
+    notify_style,
   } = body as Record<string, unknown>;
 
   if (typeof notify_enabled !== 'boolean') {
@@ -70,6 +75,27 @@ settings.put('/', async (c) => {
     }
   }
 
+  // Персонализация: пустая строка означает «по умолчанию», слишком длинная — ошибка
+  const textFields = [
+    ['coach_name', coach_name, MAX_NAME_LENGTH],
+    ['gym_name', gym_name, MAX_GYM_LENGTH],
+    ['greeting', greeting, MAX_GREETING_LENGTH],
+    ['button_label', button_label, MAX_BUTTON_LENGTH],
+  ] as const;
+  const cleaned: Record<string, string | null | undefined> = {};
+  for (const [key, value, max] of textFields) {
+    if (value === undefined) continue;
+    const text = cleanText(value, max);
+    if (text === undefined) {
+      return c.json({ error: `${key}: текст не длиннее ${max} символов, можно оставить пустым` }, 400);
+    }
+    cleaned[key] = text;
+  }
+
+  if (notify_style !== undefined && notify_style !== 'full' && notify_style !== 'short') {
+    return c.json({ error: 'notify_style должен быть full или short' }, 400);
+  }
+
   if (typeof tz !== 'string') {
     return c.json({ error: 'Некорректный часовой пояс' }, 400);
   }
@@ -96,6 +122,11 @@ settings.put('/', async (c) => {
     currency: cleanedCurrency,
     birthday_time: birthday_time as string | undefined,
     backup_time: backup_time as string | undefined,
+    coach_name: cleaned.coach_name,
+    gym_name: cleaned.gym_name,
+    greeting: cleaned.greeting,
+    button_label: cleaned.button_label,
+    notify_style: notify_style as string | undefined,
   });
 
   return c.json(settingsView(updated));

@@ -11,7 +11,7 @@
 //  - если notify_time сам раньше 03:00, режим «доотправки после полуночи» отключается
 // Удаление сообщений: бот сам стирает из чата сообщения «Новая запись» (см. scheduled_deletes).
 // Записи и заметки в базе НЕ удаляются.
-import type { Env } from './types';
+import type { Appointment, Env } from './types';
 import {
   ensureUser,
   getClientByName,
@@ -25,10 +25,21 @@ import {
 import { getAllowedIds } from './lib/access';
 import { addDays, nowInTz } from './lib/time';
 import { formatDay } from './lib/format';
+import { gymName, notifyStyle } from './lib/settings';
 import { deleteMessage, escapeHtml, openAppKeyboard, sendDocument, sendMessage } from './bot/telegram';
 import { buildJsonBackup } from './lib/backup';
 
 const CUTOFF = '03:00';
+
+/**
+ * Короткое расписание: только время и имена, без контактов, заметок и цены.
+ * Так просили тренеры, которым вечером нужен просто список «кто когда».
+ */
+export function shortDay(items: Appointment[]): string {
+  const live = items.filter((a) => a.status === 'scheduled');
+  if (!live.length) return '<i>Занятий нет</i>';
+  return live.map((a) => `• <b>${a.start_time}</b> — ${escapeHtml(a.client_name)}`).join('\n');
+}
 
 /** Чистая функция: пора ли слать уведомление и за какую «вечернюю дату». */
 export function notifyDecision(
@@ -107,13 +118,20 @@ export async function runNotifications(env: Env, appUrl: string) {
         const note = await getDayNote(env.DB, userId, target);
         count = items.length;
 
+        const short = notifyStyle(u.notify_style) === 'short';
         const clientContacts = new Map<string, { phone?: string | null; telegram?: string | null }>();
-        for (const item of items) {
-          const cl = await getClientByName(env.DB, userId, item.client_name);
-          if (cl) clientContacts.set(item.client_name, { phone: cl.phone, telegram: cl.telegram });
+        // В коротком режиме контакты не нужны — не тратим запросы к базе на каждого клиента
+        if (!short) {
+          for (const item of items) {
+            const cl = await getClientByName(env.DB, userId, item.client_name);
+            if (cl) clientContacts.set(item.client_name, { phone: cl.phone, telegram: cl.telegram });
+          }
         }
 
-        const text = `🌙 <b>Расписание на завтра</b>\n\n${formatDay(target, items, note, clientContacts)}`;
+        const gym = gymName(u);
+        const heading = `🌙 <b>Расписание на завтра</b>${gym ? ` · ${escapeHtml(gym)}` : ''}`;
+        const body = short ? shortDay(items) : formatDay(target, items, note, clientContacts);
+        const text = `${heading}\n\n${body}`;
         outcome = classifySend(await sendMessage(env, userId, text, openAppKeyboard(appUrl)));
       } catch (e) {
         console.error('notify send failed', userId, e);
