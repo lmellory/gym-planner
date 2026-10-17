@@ -156,8 +156,8 @@ describe('траты на материалы', () => {
     expect(saved).toMatchObject({ amount: 50, date: '2026-10-14' });
   });
 
-  it('список за период: правка и удаление', async () => {
-    click('#btn-open-expenses');
+  it('вкладка «Траты»: список за период, правка и удаление', async () => {
+    click('#finance-tabs .segment-btn[data-tab="expenses"]');
     await until(() => $$('#expenses-list .expense-row').length === 4);
     expect(txt('#expenses-total')).toBe('950 руб.');
     const row = $$('#expenses-list .expense-row').find((r) => r.textContent.includes('Клей'));
@@ -171,7 +171,8 @@ describe('траты на материалы', () => {
     click('#btn-delete-expense');
     await until(() => $$('#expenses-list .expense-row').length === 3);
     expect(txt('#expenses-total')).toBe('900 руб.');
-    click('#btn-back-from-expenses');
+    // Возврат на вкладку «Обзор»: суммы пересчитались
+    click('#finance-tabs .segment-btn[data-tab="overview"]');
     await until(() => $('#screen-income').classList.contains('active') && txt('#income-sum-expense') === '900 руб.');
   });
 

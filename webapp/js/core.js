@@ -258,9 +258,6 @@ function goScreen(name) {
     } else if (name === 'calendar') {
       if (headerTitle) headerTitle.textContent = 'Календарь';
       tg?.MainButton?.hide();
-    } else if (name === 'search') {
-      if (headerTitle) headerTitle.textContent = 'Поиск';
-      tg?.MainButton?.hide();
     } else if (name === 'note') {
       if (headerTitle) headerTitle.textContent = 'Заметка дня';
       if (tg?.MainButton) {

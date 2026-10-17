@@ -302,9 +302,11 @@ function closeExpenseEdit() {
   if (modal) modal.style.display = 'none';
 }
 
-// После изменения трат обновляем тот экран, который открыт под окном
+// После изменения трат обновляем то, что открыто под окном: вкладку трат или обзор доходов
 async function refreshAfterExpenseChange() {
-  if (state.currentScreen === 'expenses') await loadExpensesList();
+  const expensesPanel = document.getElementById('finance-tab-expenses');
+  const onExpensesTab = !!expensesPanel && expensesPanel.style.display !== 'none';
+  if (onExpensesTab) await loadExpensesList();
   else if (state.currentScreen === 'income') await loadIncome();
 }
 
@@ -399,15 +401,27 @@ async function loadExpensesList() {
 
 document.getElementById('btn-add-expense')?.addEventListener('click', () => { haptic('light'); openExpenseEdit(null); });
 document.getElementById('btn-add-expense-list')?.addEventListener('click', () => { haptic('light'); openExpenseEdit(null); });
-document.getElementById('btn-open-expenses')?.addEventListener('click', () => {
-  haptic('light');
-  goScreen('expenses');
-  loadExpensesList();
-});
-document.getElementById('btn-back-from-expenses')?.addEventListener('click', () => {
-  haptic('light');
-  goScreen('income');
-  loadIncome(); // траты могли измениться
+
+// Вкладки «Обзор / Траты» внутри одного экрана финансов: отдельного экрана трат больше нет
+function setFinanceTab(tab) {
+  const overview = document.getElementById('finance-tab-overview');
+  const expenses = document.getElementById('finance-tab-expenses');
+  if (!overview || !expenses) return;
+  const isExpenses = tab === 'expenses';
+  overview.style.display = isExpenses ? 'none' : '';
+  expenses.style.display = isExpenses ? '' : 'none';
+  document.querySelectorAll('#finance-tabs .segment-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  if (isExpenses) loadExpensesList();
+  else loadIncome();
+}
+
+document.querySelectorAll('#finance-tabs .segment-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    haptic('light');
+    setFinanceTab(btn.dataset.tab);
+  });
 });
 document.getElementById('btn-close-expense-edit')?.addEventListener('click', closeExpenseEdit);
 document.getElementById('btn-cancel-expense-edit')?.addEventListener('click', closeExpenseEdit);
@@ -465,10 +479,6 @@ document.getElementById('btn-reload-app')?.addEventListener('click', () => {
 document.getElementById('btn-open-calendar')?.addEventListener('click', () => {
   haptic('light');
   openCalendar();
-});
-document.getElementById('btn-open-search')?.addEventListener('click', () => {
-  haptic('light');
-  openSearch();
 });
 document.getElementById('btn-open-settings')?.addEventListener('click', () => {
   haptic('light');
