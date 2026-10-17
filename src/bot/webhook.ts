@@ -1,10 +1,10 @@
-// Обработка апдейтов Telegram (webhook). Команды: /start /menu /today /tomorrow /notify /id; для администратора ещё
+// Обработка апдейтов Telegram (webhook). Команды: /start /menu /today /id; для администратора ещё
 // /admin /users /user /stats /health /export /records /backupall /send /broadcast /adduser /ban /unban (см. admin.ts)
 import { Hono } from 'hono';
 import type { Env, UserRow } from '../types';
 import { isAllowedUser } from '../lib/access';
 import { ensureUser, getDayNote, listAppointments } from '../db';
-import { addDays, nowInTz } from '../lib/time';
+import { nowInTz } from '../lib/time';
 import { formatDay } from '../lib/format';
 import { buttonLabel, coachName, gymName } from '../lib/settings';
 import { escapeHtml, openAppKeyboard, sendMessage } from './telegram';
@@ -34,8 +34,6 @@ const WELCOME =
   `• ⚙️ В настройках кнопка «Выгрузить в Excel» отправит файл со всеми записями сюда в чат.\n\n` +
   `💬 <b>Быстрые команды бота:</b>\n` +
   `• /today — расписание на сегодня\n` +
-  `• /tomorrow — расписание на завтра\n` +
-  `• /notify — принудительно прислать вечернюю сводку\n` +
   `• /menu — открыть ежедневник`;
 
 const ADMIN_NOTE =
@@ -102,16 +100,13 @@ webhook.post('/', async (c) => {
       const me = await ensureUser(c.env.DB, userId, c.env.TZ);
       const text = staff ? personalizedWelcome(me) + ADMIN_NOTE : personalizedWelcome(me);
       await sendMessage(c.env, msg.chat.id, text, openAppKeyboard(appUrl, buttonLabel(me)));
-    } else if (cmd === '/today' || cmd === '/tomorrow' || cmd === '/notify') {
+    } else if (cmd === '/today') {
       // «Сегодня» считаем в часовом поясе пользователя (как и cron), а не в глобальном TZ
       const u = await ensureUser(c.env.DB, userId, c.env.TZ);
       const { date } = nowInTz(u.tz);
-      const target = cmd === '/today' ? date : addDays(date, 1);
-      const items = await listAppointments(c.env.DB, userId, target, target);
-      const note = await getDayNote(c.env.DB, userId, target);
-      const body = formatDay(target, items, note);
-      const out = cmd === '/notify' ? `🌙 <b>Расписание на завтра</b>\n\n${body}` : body;
-      await sendMessage(c.env, msg.chat.id, out, openAppKeyboard(appUrl));
+      const items = await listAppointments(c.env.DB, userId, date, date);
+      const note = await getDayNote(c.env.DB, userId, date);
+      await sendMessage(c.env, msg.chat.id, formatDay(date, items, note), openAppKeyboard(appUrl));
     }
   } catch (e) {
     console.error('webhook error', e);

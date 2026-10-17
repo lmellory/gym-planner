@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -41,12 +41,6 @@
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-        </button>
-        <button type="button" class="icon-btn" id="btn-open-search" title="Поиск клиента">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </button>
         <button type="button" class="icon-btn" id="btn-open-calendar" title="Календарь">
@@ -334,24 +328,6 @@
     </section>
 
     <!-- ЭКРАН 4: Поиск клиента -->
-    <section class="screen" id="screen-search">
-      <div class="screen-content">
-        <div class="search-box">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="search-box-icon">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <input type="search" id="search-input" class="search-input" placeholder="Имя клиента (от 2 символов)…" autofocus>
-          <button type="button" class="btn-clear" id="btn-search-clear" style="display: none;">✕</button>
-        </div>
-
-        <div class="search-hint" id="search-hint">Введите минимум 2 буквы для поиска</div>
-        <div class="search-results-list" id="search-results-list">
-          <!-- Результаты поиска генерируются через JS -->
-        </div>
-      </div>
-    </section>
-
     <!-- ЭКРАН: Админ-панель (выбор тренера) -->
     <section class="screen" id="screen-admin">
       <div class="screen-content">
@@ -440,6 +416,9 @@
           </div>
 
           <!-- Блок графика работы и свободных окон -->
+          <details class="settings-advanced">
+            <summary>⚙️ Дополнительно <small>график, копия, валюта</small></summary>
+
           <div class="settings-card-title" style="margin-top: 18px;">⏰ Рабочий график и свободные окна</div>
           <p class="settings-card-desc">Используется для расчёта свободных окон в расписании на каждый день.</p>
 
@@ -494,12 +473,14 @@
             <input type="text" id="setting-currency" class="form-input" maxlength="10" placeholder="руб.">
           </div>
 
+          </details>
+
           <button type="button" class="btn-primary" id="btn-save-settings">Сохранить настройки</button>
         </div>
 
         <!-- Блок прайса услуг -->
-        <div class="settings-card">
-          <div class="settings-card-title">💰 Прайс занятий</div>
+        <details class="settings-card">
+          <summary class="settings-card-title">💰 Прайс занятий</summary>
           <p class="settings-card-desc">Эта цена сама подставляется в новую запись — её можно изменить для конкретного клиента. Пустое поле — цена не подставляется.</p>
 
           <div class="time-range-row">
@@ -534,11 +515,11 @@
           </div>
 
           <button type="button" class="btn-primary" id="btn-save-prices">Сохранить прайс</button>
-        </div>
+        </details>
 
         <!-- Блок выгрузки в Excel -->
-        <div class="settings-card">
-          <div class="settings-card-title">📊 Экспорт записей</div>
+        <details class="settings-card">
+          <summary class="settings-card-title">📊 Экспорт и резервные копии</summary>
           <p class="settings-card-desc">Файл со всеми записями клиентов будет отправлен прямо вам в чат Telegram:</p>
 
           <div class="export-actions">
@@ -565,7 +546,7 @@
               </div>
             </button>
           </div>
-        </div>
+        </details>
       </div>
     </section>
 
@@ -579,6 +560,13 @@
           <h2>Доходы</h2>
           <span class="income-header-spacer"></span>
         </div>
+
+        <div class="segmented-control" id="finance-tabs">
+          <button type="button" class="segment-btn active" data-tab="overview">Обзор</button>
+          <button type="button" class="segment-btn" data-tab="expenses">Траты</button>
+        </div>
+
+        <div id="finance-tab-overview">
 
         <div class="segmented-control" id="income-period-selector">
           <button type="button" class="segment-btn active" data-period="week">Неделя</button>
@@ -650,26 +638,17 @@
 
         <div class="income-actions">
           <button type="button" class="btn btn-primary" id="btn-add-expense">+ Добавить трату</button>
-          <button type="button" class="btn btn-secondary" id="btn-open-expenses">Все траты за период</button>
           <button type="button" class="btn btn-secondary" id="btn-export-finance">📊 Выгрузить доходы и траты (CSV)</button>
         </div>
-      </div>
-    </section>
+        </div><!-- /finance-tab-overview -->
 
-    <!-- ЭКРАН 9: Траты (список за период) -->
-    <section class="screen" id="screen-expenses">
-      <div class="screen-content">
-        <div class="screen-sub-header">
-          <button type="button" class="btn-subtle" id="btn-back-from-expenses">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          </button>
-          <h2>Траты</h2>
-          <button type="button" class="btn-primary-small" id="btn-add-expense-list">+ Новая</button>
-        </div>
-        <div class="expenses-period" id="expenses-period-label"></div>
-        <div class="expenses-total" id="expenses-total"></div>
-        <div class="expenses-list" id="expenses-list">
-          <div class="loading-spinner">Загрузка…</div>
+        <div id="finance-tab-expenses" style="display: none;">
+          <div class="expenses-period" id="expenses-period-label"></div>
+          <div class="expenses-total" id="expenses-total"></div>
+          <button type="button" class="btn btn-primary" id="btn-add-expense-list" style="margin-bottom: 12px;">+ Новая трата</button>
+          <div class="expenses-list" id="expenses-list">
+            <div class="loading-spinner">Загрузка…</div>
+          </div>
         </div>
       </div>
     </section>
@@ -929,14 +908,14 @@
 
   <!-- Модули подключаются обычными скриптами в этом порядке: у них общая глобальная область,
        поэтому порядок важен (core объявляет state и утилиты, app.js в конце — инициализация). -->
-  <script src="/js/core.js?v=10"></script>
-  <script src="/js/schedule.js?v=10"></script>
-  <script src="/js/appointment-form.js?v=10"></script>
-  <script src="/js/calendar-search.js?v=10"></script>
-  <script src="/js/notes-settings.js?v=10"></script>
-  <script src="/js/clients.js?v=10"></script>
-  <script src="/js/finance.js?v=10"></script>
-  <script src="/js/admin.js?v=10"></script>
-  <script src="/app.js?v=10"></script>
+  <script src="/js/core.js?v=11"></script>
+  <script src="/js/schedule.js?v=11"></script>
+  <script src="/js/appointment-form.js?v=11"></script>
+  <script src="/js/calendar-search.js?v=11"></script>
+  <script src="/js/notes-settings.js?v=11"></script>
+  <script src="/js/clients.js?v=11"></script>
+  <script src="/js/finance.js?v=11"></script>
+  <script src="/js/admin.js?v=11"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>
