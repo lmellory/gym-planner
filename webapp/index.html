@@ -887,6 +887,16 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="/app.js?v=7"></script>
+  <!-- Модули подключаются обычными скриптами в этом порядке: у них общая глобальная область,
+       поэтому порядок важен (core объявляет state и утилиты, app.js в конце — инициализация). -->
+  <script src="/js/core.js?v=8"></script>
+  <script src="/js/schedule.js?v=8"></script>
+  <script src="/js/appointment-form.js?v=8"></script>
+  <script src="/js/calendar-search.js?v=8"></script>
+  <script src="/js/notes-settings.js?v=8"></script>
+  <script src="/js/clients.js?v=8"></script>
+  <script src="/js/finance.js?v=8"></script>
+  <script src="/js/admin.js?v=8"></script>
+  <script src="/app.js?v=8"></script>
 </body>
 </html>
