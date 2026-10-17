@@ -25,6 +25,63 @@ if (tg) {
   tg.onEvent?.('themeChanged', syncTgTheme);
 }
 
+/**
+ * Ссылки: t.me открываем внутри Telegram, остальные — во внешнем браузере.
+ * Методы появились в Bot API 6.1; если клиент старее, срабатывает обычный window.open.
+ */
+function isTelegramLink(url) {
+  return /^https:\/\/(t\.me|telegram\.me|telegram\.dog)\//.test(url);
+}
+
+function openExternal(url) {
+  if (!url) return;
+  try {
+    if (isTelegramLink(url) && typeof tg?.openTelegramLink === 'function') {
+      tg.openTelegramLink(url);
+      return;
+    }
+    if (typeof tg?.openLink === 'function') {
+      tg.openLink(url, { try_instant_view: false });
+      return;
+    }
+  } catch (err) {
+    console.error('openExternal failed', err);
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ===== Отчёт об ошибках с клиента =====
+// Не больше пяти сообщений за сессию: лог не должен превращаться в поток.
+const APP_VERSION = '13';
+let clientErrorsSent = 0;
+
+function reportClientError(kind, message, stack) {
+  if (clientErrorsSent >= 5) return;
+  clientErrorsSent += 1;
+  try {
+    fetch('/api/client-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        kind,
+        message: String(message || '').slice(0, 300),
+        stack: String(stack || '').slice(0, 800),
+        url: location.href,
+        version: APP_VERSION,
+      }),
+    }).catch(() => {});
+  } catch {
+    /* сам отчёт не должен ломать приложение */
+  }
+}
+
+window.addEventListener('error', (e) => reportClientError('error', e.message, e.error && e.error.stack));
+window.addEventListener('unhandledrejection', (e) => {
+  const reason = e.reason;
+  reportClientError('promise', (reason && reason.message) || reason, reason && reason.stack);
+});
+
 /** Запрос к API. Подпись Telegram передаётся в заголовке X-Init-Data */
 async function api(path, options = {}) {
   const initData = tg?.initData || '';
@@ -44,6 +101,10 @@ async function api(path, options = {}) {
     if (err.name === 'AbortError') throw err;
     showToast('Ошибка сети');
     throw err;
+  }
+  // 5xx — это наша ошибка, а не сеть: отправляем на сервер, чтобы увидеть в логах
+  if (res.status >= 500) {
+    reportClientError('api', `${options.method || 'GET'} /api${path} → ${res.status}`, '');
   }
   if (res.status === 403) {
     const overlay = document.getElementById('session-expired-overlay');
