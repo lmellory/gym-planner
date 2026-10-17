@@ -1,12 +1,13 @@
 // Обработка апдейтов Telegram (webhook). Команды: /start /menu /today /tomorrow /notify /id; для администратора ещё
 // /admin /users /user /stats /health /export /records /backupall /send /broadcast /adduser /ban /unban (см. admin.ts)
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { Env, UserRow } from '../types';
 import { isAllowedUser } from '../lib/access';
 import { ensureUser, getDayNote, listAppointments } from '../db';
 import { addDays, nowInTz } from '../lib/time';
 import { formatDay } from '../lib/format';
-import { openAppKeyboard, sendMessage } from './telegram';
+import { buttonLabel, coachName, gymName } from '../lib/settings';
+import { escapeHtml, openAppKeyboard, sendMessage } from './telegram';
 import { handleAdminCommand, isAdmin, isAdminCommand } from './admin';
 
 export const webhook = new Hono<{ Bindings: Env }>();
@@ -42,6 +43,18 @@ const ADMIN_NOTE =
 
 const ADMIN_WELCOME =
   `🛠 <b>Вы администратор.</b>\n\nОткройте приложение: кнопка 🛠 в шапке открывает админ-панель, где можно выбрать тренера и добавлять, менять и удалять его записи.\n\nКоманды администратора: /admin`;
+
+/**
+ * Приветствие с учётом персонализации: обращение по имени, название зала и свой текст.
+ * Свой текст экранируется — это пользовательский ввод. Пустое поле означает «как раньше».
+ */
+export function personalizedWelcome(u: UserRow): string {
+  const name = coachName(u);
+  const gym = gymName(u);
+  const hi = `👋 Привет${name ? `, <b>${escapeHtml(name)}</b>` : ''}!`;
+  if (u.greeting && u.greeting.trim()) return `${hi}\n\n${escapeHtml(u.greeting.trim())}`;
+  return `${hi}${gym ? `\n🏢 <b>${escapeHtml(gym)}</b>` : ''}\n\n${WELCOME}`;
+}
 
 webhook.post('/', async (c) => {
   // Telegram присылает секрет в заголовке (задаётся при setWebhook через secret_token).
@@ -86,7 +99,9 @@ webhook.post('/', async (c) => {
     }
 
     if (cmd === '/start' || cmd === '/menu') {
-      await sendMessage(c.env, msg.chat.id, staff ? WELCOME + ADMIN_NOTE : WELCOME, openAppKeyboard(appUrl, '🏋️ Открыть ежедневник'));
+      const me = await ensureUser(c.env.DB, userId, c.env.TZ);
+      const text = staff ? personalizedWelcome(me) + ADMIN_NOTE : personalizedWelcome(me);
+      await sendMessage(c.env, msg.chat.id, text, openAppKeyboard(appUrl, buttonLabel(me)));
     } else if (cmd === '/today' || cmd === '/tomorrow' || cmd === '/notify') {
       // «Сегодня» считаем в часовом поясе пользователя (как и cron), а не в глобальном TZ
       const u = await ensureUser(c.env.DB, userId, c.env.TZ);

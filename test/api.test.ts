@@ -247,6 +247,35 @@ describe('прайс и настройки', () => {
     expect((await api(env, OWNER, 'GET', '/api/settings')).json.backup_enabled).toBe(false);
     expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, backup_enabled: 'yes' })).status).toBe(400);
   });
+
+  it('персонализация: имя, зал, приветствие, подпись кнопки и стиль расписания', async () => {
+    const s = (await api(env, OWNER, 'GET', '/api/settings')).json;
+    expect(s.coach_name).toBeNull();
+    expect(s.notify_style).toBe('full');
+
+    const put = await api(env, OWNER, 'PUT', '/api/settings', {
+      ...s,
+      coach_name: '  Саша ',
+      gym_name: 'Зал «Атлет»',
+      greeting: 'Пиши в любое время',
+      button_label: 'Открыть зал',
+      notify_style: 'short',
+    });
+    expect(put.status).toBe(200);
+    expect(put.json.coach_name).toBe('Саша'); // пробелы по краям убраны
+    expect(put.json.gym_name).toBe('Зал «Атлет»');
+    expect(put.json.greeting).toBe('Пиши в любое время');
+    expect(put.json.button_label).toBe('Открыть зал');
+    expect(put.json.notify_style).toBe('short');
+
+    // пустая строка возвращает значение «по умолчанию», остальное не затирается
+    const again = await api(env, OWNER, 'PUT', '/api/settings', { ...put.json, greeting: '' });
+    expect(again.json.coach_name).toBe('Саша');
+    expect(again.json.greeting).toBeNull();
+
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, notify_style: 'huge' })).status).toBe(400);
+    expect((await api(env, OWNER, 'PUT', '/api/settings', { ...s, coach_name: 'я'.repeat(41) })).status).toBe(400);
+  });
 });
 
 describe('выгрузки', () => {

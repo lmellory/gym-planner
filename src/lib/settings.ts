@@ -2,6 +2,14 @@
 import type { UserRow } from '../types';
 
 export const MAX_CURRENCY_LENGTH = 10;
+export const MAX_NAME_LENGTH = 40;
+export const MAX_GYM_LENGTH = 60;
+export const MAX_GREETING_LENGTH = 500;
+export const MAX_BUTTON_LENGTH = 40;
+
+export const DEFAULT_BUTTON_LABEL = '🏋️ Открыть ежедневник';
+
+export type NotifyStyle = 'full' | 'short';
 
 export interface SettingsView {
   notify_enabled: boolean;
@@ -17,6 +25,31 @@ export interface SettingsView {
   currency: string | null;
   birthday_time: string;
   backup_time: string;
+  coach_name: string | null;
+  gym_name: string | null;
+  greeting: string | null;
+  button_label: string | null;
+  notify_style: NotifyStyle;
+}
+
+/** Стиль вечернего расписания: всё, кроме явного «short», считаем подробным. */
+export function notifyStyle(v: unknown): NotifyStyle {
+  return v === 'short' ? 'short' : 'full';
+}
+
+/** Как бот обращается к тренеру: своё имя из настроек, иначе имя из Telegram. */
+export function coachName(u: Pick<UserRow, 'coach_name' | 'display_name'>): string {
+  return (u.coach_name || u.display_name || '').trim();
+}
+
+/** Название зала/студии, если тренер его указал. */
+export function gymName(u: Pick<UserRow, 'gym_name'>): string {
+  return (u.gym_name || '').trim();
+}
+
+/** Подпись кнопки входа в приложение. */
+export function buttonLabel(u: Pick<UserRow, 'button_label'>): string {
+  return (u.button_label || '').trim() || DEFAULT_BUTTON_LABEL;
 }
 
 export function settingsView(u: UserRow): SettingsView {
@@ -34,7 +67,24 @@ export function settingsView(u: UserRow): SettingsView {
     currency: u.currency || null,
     birthday_time: u.birthday_time || '10:00',
     backup_time: u.backup_time || '21:00',
+    coach_name: u.coach_name || null,
+    gym_name: u.gym_name || null,
+    greeting: u.greeting || null,
+    button_label: u.button_label || null,
+    notify_style: notifyStyle(u.notify_style),
   };
+}
+
+/**
+ * Свободный текст из настроек: пустая строка — «по умолчанию» (null), слишком длинный — ошибка (undefined).
+ * Пробелы внутри схлопываются, переводы строк в приветствии сохраняются.
+ */
+export function cleanText(v: unknown, max: number): string | null | undefined {
+  if (v === null) return null;
+  if (typeof v !== 'string') return undefined;
+  const s = v.replace(/\r\n/g, '\n').trim();
+  if (!s) return null;
+  return s.length > max ? undefined : s;
 }
 
 /** Подпись валюты из пользовательского ввода: пустая строка — «по умолчанию» (null), слишком длинная — ошибка (undefined). */

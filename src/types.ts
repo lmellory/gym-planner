@@ -59,6 +59,12 @@ export interface UserRow {
   backup_time?: string;             // '21:00': во сколько по воскресеньям присылать копию
   notify_summary?: number;          // 1 — присылать воскресную сводку недели (по умолчанию)
   last_summary_date?: string | null; // дата воскресенья, за которое сводка уже отправлена
+  coach_name?: string | null;       // как бот обращается к тренеру; NULL — имя из Telegram
+  gym_name?: string | null;         // название зала/студии
+  greeting?: string | null;         // свой текст приветствия на /start
+  button_label?: string | null;     // подпись кнопки входа в приложение
+  notify_style?: string;            // 'full' | 'short' — подробность вечернего расписания
+  display_name?: string | null;     // имя из Telegram (заполняется при открытии приложения)
 }
 
 export interface Client {
