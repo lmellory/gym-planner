@@ -1,0 +1,24 @@
+# Заголовки кэша для статики Worker.
+#
+# index.html отдаётся с no-store: иначе Telegram-WebView кэширует его надолго,
+# и новые версии скриптов и стилей (с ?v=) не подхватываются — сам HTML остаётся старым.
+#
+# Файлы с ?v= версионируются вручную, поэтому их можно кэшировать надолго.
+
+/
+  Cache-Control: no-store
+
+/index.html
+  Cache-Control: no-store
+
+/style.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/app.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/privacy.html
+  Cache-Control: public, max-age=3600
