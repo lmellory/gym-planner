@@ -1,7 +1,8 @@
-// Доступ пользователей: секрет ALLOWED_IDS + команды администратора /adduser, /ban, /unban (таблица access).
-//   итоговый доступ = (ALLOWED_IDS ∪ добавленные) минус заблокированные.
-// Если таблицы access ещё нет (миграция 0013 не применена) или запрос упал, работаем только по ALLOWED_IDS:
-// так сбой в этой части не может закрыть доступ всем.
+// Доступ пользователей: администраторы (ADMIN_ID) и таблица access (команды /adduser, /ban, /unban).
+//   доступ = выданные через /adduser минус заблокированные через /ban; администраторы проходят всегда.
+// Списка ID в секретах больше нет: тренера добавляет администратор командой /adduser.
+// Если таблицы access ещё нет (миграция 0013 не применена) или запрос упал, доступ закрыт (fail closed).
+// Администраторы при этом работают: они проверяются отдельно, без запросов к базе.
 import type { Env } from '../types';
 
 /** Разбор списка Telegram ID через запятую; нечисла и неположительные значения отбрасываются. */
@@ -26,12 +27,12 @@ export interface AccessRow {
 /** allowed — доступ есть; banned — заблокирован; none — доступа нет (и не блокировали). */
 export type AccessState = 'allowed' | 'banned' | 'none';
 
-type AccessEnv = Pick<Env, 'DB' | 'ALLOWED_IDS'>;
+type AccessEnv = { DB: D1Database };
 
-/** Чистая функция: состояние доступа по секрету и строке из таблицы access. */
-export function accessState(inSecret: boolean, row: Pick<AccessRow, 'added' | 'banned'> | null): AccessState {
+/** Чистая функция: состояние доступа по строке из таблицы access. */
+export function accessState(row: Pick<AccessRow, 'added' | 'banned'> | null): AccessState {
   if (row?.banned) return 'banned';
-  return inSecret || row?.added ? 'allowed' : 'none';
+  return row?.added ? 'allowed' : 'none';
 }
 
 const toRow = (x: AccessRow): AccessRow => ({ user_id: Number(x.user_id), added: Number(x.added), banned: Number(x.banned) });
@@ -48,26 +49,26 @@ export async function listAccess(db: D1Database): Promise<AccessRow[]> {
   return r.results.map(toRow);
 }
 
-/** Как listAccess, но при сбое возвращает пустой список (откат на ALLOWED_IDS). */
+/** Как listAccess, но при сбое возвращает пустой список: сломанная таблица не должна ронять cron. */
 async function listAccessSafe(db: D1Database): Promise<AccessRow[]> {
   try {
     return await listAccess(db);
   } catch (e) {
-    console.error('access: таблица недоступна, используется только ALLOWED_IDS', e);
+    console.error('access: таблица недоступна, доступ закрыт', e);
     return [];
   }
 }
 
 export interface AccessSnapshot {
   allowed: number[]; // у кого сейчас есть доступ
-  banned: number[];  // кто заблокирован (в том числе тот, кого нет в ALLOWED_IDS)
+  banned: number[];  // кто заблокирован (в том числе тот, кому доступ не выдавали)
 }
 
 export async function getAccessSnapshot(env: AccessEnv): Promise<AccessSnapshot> {
   const rows = await listAccessSafe(env.DB);
   const banned = rows.filter((r) => r.banned).map((r) => r.user_id);
   const blocked = new Set(banned);
-  const ids = new Set([...parseIdList(env.ALLOWED_IDS), ...rows.filter((r) => r.added).map((r) => r.user_id)]);
+  const ids = new Set(rows.filter((r) => r.added).map((r) => r.user_id));
   return { allowed: [...ids].filter((id) => !blocked.has(id)), banned };
 }
 
@@ -76,15 +77,15 @@ export async function getAllowedIds(env: AccessEnv): Promise<number[]> {
   return (await getAccessSnapshot(env)).allowed;
 }
 
-/** Состояние доступа одного пользователя (при сбое чтения таблицы — только по ALLOWED_IDS). */
+/** Состояние доступа одного пользователя (при сбое чтения таблицы — доступ закрыт). */
 export async function getAccessState(env: AccessEnv, userId: number): Promise<AccessState> {
   let row: AccessRow | null = null;
   try {
     row = await getAccessRow(env.DB, userId);
   } catch (e) {
-    console.error('access: таблица недоступна, используется только ALLOWED_IDS', e);
+    console.error('access: таблица недоступна, доступ закрыт', e);
   }
-  return accessState(parseIdList(env.ALLOWED_IDS).includes(userId), row);
+  return accessState(row);
 }
 
 /** Есть ли у пользователя доступ (приложение и бот). */

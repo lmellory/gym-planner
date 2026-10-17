@@ -11,7 +11,7 @@ beforeEach(async () => {
   vi.setSystemTime(new Date(NOW));
   const t = await createTestDb();
   closeDb = t.close;
-  env = makeEnv(t.db);
+  env = await makeEnv(t.db);
   tg = stubTelegram();
 });
 afterEach(() => {

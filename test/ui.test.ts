@@ -29,7 +29,7 @@ beforeAll(async () => {
   vi.setSystemTime(new Date(NOW));
   const t = await createTestDb();
   closeDb = t.close;
-  env = makeEnv(t.db);
+  env = await makeEnv(t.db);
   tg = stubTelegram();
   await seedWeek(env); // неделя 12–18 окт с записями, срывами и тратами
 

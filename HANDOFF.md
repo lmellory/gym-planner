@@ -25,7 +25,7 @@
 1. **Установить зависимости и прогнать проверки**:
    `npm install && npm run typecheck && npm test`.
 2. **Новая инфраструктура**: создать бота в @BotFather, новую базу Turso, затем `wrangler secret put`
-   BOT_TOKEN / ALLOWED_IDS (Telegram ID тренера) / WEBHOOK_SECRET / TURSO_AUTH_TOKEN, вписать `TURSO_URL` и `APP_URL`
+   BOT_TOKEN / ADMIN_ID (Telegram ID администраторов) / WEBHOOK_SECRET / TURSO_AUTH_TOKEN, вписать `TURSO_URL` и `APP_URL`
    в `wrangler.toml`, `npm run migrate`, `npm run deploy`, выставить webhook.
 3. **README.md**: полностью переписан под тренера в спортзале и фитнес-инструктора.
 4. **Уточнить у тренера**: список видов занятий и длительности, часовой пояс (`TZ` в `wrangler.toml`, сейчас

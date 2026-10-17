@@ -22,10 +22,6 @@ function safeEqual(a: string, b: string): boolean {
   return r === 0;
 }
 
-export function parseAllowedIds(raw: string): number[] {
-  return raw.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0);
-}
-
 /** Возвращает id пользователя или null, если подпись неверна / данные устарели. */
 export async function verifyInitData(initData: string, botToken: string, maxAgeSec = 86400): Promise<number | null> {
   const params = new URLSearchParams(initData);
@@ -80,7 +76,7 @@ export function actAsAllowed(method: string, pathname: string): boolean {
 
 /**
  * Middleware для /api/*: клиент шлёт заголовок X-Init-Data. Личность берём ТОЛЬКО из подписи.
- * Пускаем тренеров с доступом (ALLOWED_IDS + /adduser, минус /ban) и администраторов (ADMIN_ID).
+ * Пускаем тренеров с доступом (/adduser, минус /ban) и администраторов (ADMIN_ID).
  *
  * Администратор может прислать заголовок X-Act-As: <ID тренера>: тогда запрос выполняется над данными
  * этого тренера (так админ-панель правит записи через те же проверки, что и обычное приложение),

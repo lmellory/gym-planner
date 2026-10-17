@@ -6,7 +6,7 @@ import { isAdmin } from '../src/bot/admin';
 import { accessState, getAllowedIds, parseIdList } from '../src/lib/access';
 import { api, createTestDb, makeEnv, NOW, OTHER, OWNER, signInitData, stubTelegram, type TgCall } from './helpers/harness';
 
-const ADMIN2 = 999; // второй администратор: не тренер, в ALLOWED_IDS его нет
+const ADMIN2 = 999; // второй администратор: не тренер, доступа в таблице access у него нет
 const STRANGER = 333;
 
 let env: any;
@@ -18,7 +18,7 @@ beforeEach(async () => {
   vi.setSystemTime(new Date(NOW));
   const t = await createTestDb();
   closeDb = t.close;
-  env = makeEnv(t.db, { WEBHOOK_SECRET: 'sec', ADMIN_ID: `${OWNER},${ADMIN2}` });
+  env = await makeEnv(t.db, { WEBHOOK_SECRET: 'sec', ADMIN_ID: `${OWNER},${ADMIN2}` });
   tg = stubTelegram();
   for (const [user, name] of [[OWNER, 'Админский клиент'], [OTHER, 'Чужой клиент']] as const) {
     const r = await api(env, user, 'POST', '/api/appointments', { date: '2026-10-14', start_time: '10:00', client_name: name, service: 'personal' });
@@ -78,12 +78,11 @@ describe('чистые функции', () => {
     expect(parseIdList(undefined)).toEqual([]);
   });
 
-  it('accessState: блокировка сильнее и секрета, и /adduser', () => {
-    expect(accessState(true, null)).toBe('allowed');
-    expect(accessState(false, { added: 1, banned: 0 })).toBe('allowed');
-    expect(accessState(false, null)).toBe('none');
-    expect(accessState(true, { added: 0, banned: 1 })).toBe('banned');
-    expect(accessState(false, { added: 1, banned: 1 })).toBe('banned');
+  it('accessState: блокировка сильнее выданного доступа', () => {
+    expect(accessState(null)).toBe('none');
+    expect(accessState({ added: 1, banned: 0 })).toBe('allowed');
+    expect(accessState({ added: 0, banned: 1 })).toBe('banned');
+    expect(accessState({ added: 1, banned: 1 })).toBe('banned');
   });
 
   it('actAsAllowed: все действия с записями; из остального только чтение нужного для формы', () => {
@@ -141,8 +140,8 @@ describe('/api/me и список тренеров', () => {
     expect(Number(n.n)).toBe(0);
   });
 
-  it('тренер из ALLOWED_IDS, который ещё не открывал бота, тоже в списке', async () => {
-    env.ALLOWED_IDS = `${OWNER},${OTHER},444`;
+  it('тренер с доступом, который ещё не открывал бота, тоже в списке', async () => {
+    await env.DB.prepare('INSERT INTO access (user_id, added) VALUES (?, 1)').bind(444).run();
     const r = await apiAs(ADMIN2, null, 'GET', '/api/admin/trainers');
     expect(r.json.trainers.find((m: any) => m.user_id === 444)).toMatchObject({ appointments: 0, has_access: true });
   });
@@ -335,8 +334,8 @@ describe('/adduser, /ban, /unban', () => {
     await hook(OWNER, `/unban ${OTHER}`);
     expect(messages()[0].text).toContain('Доступ вернулся');
     expect((await apiAs(OTHER, null, 'GET', '/api/settings')).status).toBe(200);
-    const rows = await env.DB.prepare('SELECT COUNT(*) AS n FROM access').first();
-    expect(Number(rows.n)).toBe(0); // пустая строка access не остаётся
+    const rows = await env.DB.prepare('SELECT added, banned FROM access WHERE user_id = ?').bind(OTHER).first();
+    expect(rows).toMatchObject({ added: 1, banned: 0 }); // доступ выдан, блокировки не осталось
   });
 
   it('заблокированный отмечен в /users и в списке тренеров, не получает рассылку', async () => {
@@ -374,8 +373,8 @@ describe('/adduser, /ban, /unban', () => {
     await hook(OWNER, `/ban ${ADMIN2}`);
     await hook(OWNER, `/ban ${OWNER}`);
     expect(messages().every((m) => String(m.text).includes('Администратора заблокировать нельзя'))).toBe(true);
-    const rows = await env.DB.prepare('SELECT COUNT(*) AS n FROM access').first();
-    expect(Number(rows.n)).toBe(0);
+    const rows = await env.DB.prepare('SELECT COUNT(*) AS n FROM access WHERE banned = 1').first();
+    expect(Number(rows.n)).toBe(0); // строки блокировки не появились
   });
 
   it('«не заблокирован», без ID и с кривым ID', async () => {
@@ -397,8 +396,8 @@ describe('/adduser, /ban, /unban', () => {
       for (const text of ['/adduser 555', `/ban ${OWNER}`, `/unban ${OWNER}`]) await hook(from, text);
     }
     expect(tg).toHaveLength(0);
-    const rows = await env.DB.prepare('SELECT COUNT(*) AS n FROM access').first();
-    expect(Number(rows.n)).toBe(0);
+    const rows = await env.DB.prepare('SELECT COUNT(*) AS n FROM access WHERE user_id = 555 OR banned = 1').first();
+    expect(Number(rows.n)).toBe(0); // доступ не менялся
   });
 
   it('/admin показывает новые команды и подсказку про админ-панель', async () => {
@@ -406,11 +405,11 @@ describe('/adduser, /ban, /unban', () => {
     for (const c of ['/adduser', '/ban', '/unban', 'Записи тренеров правятся в приложении']) expect(messages()[0].text).toContain(c);
   });
 
-  it('сбой чтения таблицы access (нет миграции): работаем по ALLOWED_IDS, никого не отрезает', async () => {
+  it('сбой чтения таблицы access (нет миграции): тренерам доступ закрыт, администраторы работают', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await env.DB.prepare('DROP TABLE access').run();
-    expect((await apiAs(OTHER, null, 'GET', '/api/settings')).status).toBe(200); // OTHER не админ: доступ идёт по ALLOWED_IDS
-    expect((await apiAs(STRANGER, null, 'GET', '/api/settings')).status).toBe(403);
-    expect(await getAllowedIds(env)).toEqual([OWNER, OTHER]);
+    expect((await apiAs(OTHER, null, 'GET', '/api/settings')).status).toBe(403); // OTHER не админ: без таблицы доступа нет
+    expect((await apiAs(ADMIN2, null, 'GET', '/api/settings')).status).toBe(200); // администратор проверяется без базы
+    expect(await getAllowedIds(env)).toEqual([]);
   });
 });

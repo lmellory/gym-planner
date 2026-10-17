@@ -14,7 +14,7 @@ beforeEach(async () => {
   vi.setSystemTime(new Date(NOW));
   const t = await createTestDb();
   closeDb = t.close;
-  env = makeEnv(t.db, { WEBHOOK_SECRET: 'sec', ADMIN_ID: String(OWNER) });
+  env = await makeEnv(t.db, { WEBHOOK_SECRET: 'sec', ADMIN_ID: String(OWNER) });
   tg = stubTelegram();
   // у обоих пользователей есть по записи
   for (const [user, name] of [[OWNER, 'Админский клиент'], [OTHER, 'Чужой клиент']] as const) {
@@ -83,12 +83,12 @@ describe('/export', () => {
     expect(tg[1].text).toContain('Некорректный ID');
   });
 
-  it('не админ (даже тренер из ALLOWED_IDS) не получает ничего: бот молчит', async () => {
+  it('не админ (даже тренер с доступом) не получает ничего: бот молчит', async () => {
     expect((await hook(OTHER, `/export ${OWNER}`)).status).toBe(200);
     expect(tg).toHaveLength(0);
   });
 
-  it('посторонний (не из ALLOWED_IDS) тоже получает тишину', async () => {
+  it('посторонний (без доступа) тоже получает тишину', async () => {
     await hook(333, `/export ${OWNER}`);
     expect(tg).toHaveLength(0);
   });
@@ -136,7 +136,7 @@ describe('isAdminCommand', () => {
 describe('доступ к командам администратора', () => {
   const ALL = ['/admin', '/users', '/user 111', '/stats', '/health', '/backupall', '/send 111 привет', '/broadcast привет'];
 
-  it('не админ (тренер из ALLOWED_IDS) и посторонний получают тишину, ничего не уходит', async () => {
+  it('не админ (тренер с доступом) и посторонний получают тишину, ничего не уходит', async () => {
     for (const text of ALL) {
       expect((await hook(OTHER, text)).status).toBe(200);
       expect((await hook(333, text)).status).toBe(200);
@@ -161,7 +161,8 @@ describe('/admin', () => {
 
 describe('/users', () => {
   it('показывает доступ, записи и клиентов; отмечает чужих и тех, кто ещё не открывал бота', async () => {
-    env.ALLOWED_IDS = `${OWNER},${OTHER},333`; // 333 есть в ALLOWED_IDS, но в базе его нет
+    // 333 — доступ выдан, но бот он ещё не открывал: строки в users нет
+    await env.DB.prepare('INSERT INTO access (user_id, added) VALUES (?, 1)').bind(333).run();
     await env.DB.prepare('INSERT INTO users (user_id, tz, notify_time) VALUES (?,?,?)').bind(444, 'Europe/Chisinau', '22:00').run(); // в базе, но без доступа
     await hook(OWNER, '/users');
     expect(tg).toHaveLength(1);
@@ -231,7 +232,7 @@ describe('/health', () => {
     expect(t).toContain('✅ Бот: @gym_bot');
     expect(t).toContain('⚠️ Webhook: установлен, ожидает апдейтов: 3');
     expect(t).toContain('Connection &lt;timed out&gt;');
-    expect(t).toContain('ALLOWED_IDS: 2');
+    expect(t).toContain('с доступом: 2');
     expect(t).not.toContain('123456:TEST-TOKEN'); // токен бота нигде не показывается
     expect(t).not.toContain('app.test/webhook');
   });
@@ -289,8 +290,8 @@ describe('/send', () => {
     expect(tg[1].text).toContain(`✅ Доставлено пользователю <code>${OTHER}</code>`);
   });
 
-  it('работает с суффиксом бота и для пользователя из ALLOWED_IDS, которого ещё нет в базе', async () => {
-    env.ALLOWED_IDS = `${OWNER},${OTHER},333`;
+  it('работает с суффиксом бота и для тренера с доступом, которого ещё нет в базе', async () => {
+    await env.DB.prepare('INSERT INTO access (user_id, added) VALUES (?, 1)').bind(333).run();
     await hook(OWNER, '/send@mybot 333 hi');
     expect(tg[0]).toMatchObject({ chat_id: 333 });
   });
@@ -320,7 +321,7 @@ describe('/send', () => {
 });
 
 describe('/broadcast', () => {
-  it('рассылает всем из ALLOWED_IDS и присылает итог', async () => {
+  it('рассылает всем тренерам с доступом и присылает итог', async () => {
     await hook(OWNER, '/broadcast Завтра в 10:00 обновление <приложения>');
     const sent = messages(tg);
     expect(sent.map((c: any) => c.chat_id)).toEqual([OWNER, OTHER, OWNER]);
@@ -330,7 +331,7 @@ describe('/broadcast', () => {
   });
 
   it('в итоге перечислены заблокировавшие бота и те, кому не удалось отправить', async () => {
-    env.ALLOWED_IDS = `${OWNER},${OTHER},333`;
+    await env.DB.prepare('INSERT INTO access (user_id, added) VALUES (?, 1)').bind(333).run();
     const calls = stubTelegramWith((r) => {
       if (r.chat_id === OTHER) return { ok: false, error_code: 403, description: 'blocked' };
       if (r.chat_id === 333) return { ok: false, error_code: 500, description: 'oops' };
@@ -350,8 +351,8 @@ describe('/broadcast', () => {
     expect(tg[1].text).toContain('Слишком длинный текст');
   });
 
-  it('пустой ALLOWED_IDS: рассылать некому', async () => {
-    env.ALLOWED_IDS = '';
+  it('нет ни одного тренера с доступом: рассылать некому', async () => {
+    await env.DB.prepare('DELETE FROM access').run();
     await hook(OWNER, '/broadcast привет');
     expect(tg).toHaveLength(1);
     expect(tg[0].text).toContain('рассылать некому');
