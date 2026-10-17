@@ -128,6 +128,18 @@ npm run typecheck
 npm run deploy
 ```
 
+#### Автоматический деплой из GitHub
+Workflow `.github/workflows/deploy.yml` выкладывает воркер при каждом пуше в `main` (есть и ручной запуск через «Run workflow»).
+Перед выкладкой он прогоняет `typecheck` и тесты, поэтому сломанный код в прод не уедет.
+
+Нужен один секрет: **Settings → Secrets and variables → Actions → New repository secret**
+- имя: `CLOUDFLARE_API_TOKEN`
+- значение: токен из Cloudflare → My Profile → API Tokens → Create Token → шаблон **Edit Cloudflare Workers**
+
+Пока секрет не задан, деплой-шаг пропускается с пометкой в логе, а не падает.
+**Миграции автоматически не применяются** — `npm run migrate` запускается вручную: это осознанно,
+схема базы меняется реже кода, и пусть лучше это будет под контролем.
+
 ### 6. Установка Webhook Telegram
 ```bash
 curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
