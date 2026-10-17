@@ -21,7 +21,7 @@
     <!-- Верхняя панель навигации -->
     <header class="app-header" id="app-header">
       <div class="header-left">
-        <button type="button" class="icon-btn" id="btn-back" title="Назад" style="display: none;">
+        <button type="button" class="icon-btn" id="btn-back" title="Назад" aria-label="Назад" style="display: none;">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -29,13 +29,13 @@
         <h1 class="header-title" id="header-title">Ежедневник</h1>
       </div>
       <div class="header-actions" id="header-actions">
-        <button type="button" class="icon-btn" id="btn-open-admin" title="Админ-панель" style="display: none;">
+        <button type="button" class="icon-btn" id="btn-open-admin" title="Админ-панель" aria-label="Админ-панель" style="display: none;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             <polyline points="9 12 11 14 15 10"></polyline>
           </svg>
         </button>
-        <button type="button" class="icon-btn" id="btn-open-clients" title="Клиенты">
+        <button type="button" class="icon-btn" id="btn-open-clients" title="Клиенты" aria-label="Клиенты">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
@@ -43,7 +43,7 @@
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
         </button>
-        <button type="button" class="icon-btn" id="btn-open-calendar" title="Календарь">
+        <button type="button" class="icon-btn" id="btn-open-calendar" title="Календарь" aria-label="Календарь">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -51,14 +51,14 @@
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
         </button>
-        <button type="button" class="icon-btn" id="btn-open-income" title="Доходы">
+        <button type="button" class="icon-btn" id="btn-open-income" title="Доходы" aria-label="Доходы">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="20" x2="18" y2="10"></line>
             <line x1="12" y1="20" x2="12" y2="4"></line>
             <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
         </button>
-        <button type="button" class="icon-btn" id="btn-open-settings" title="Настройки">
+        <button type="button" class="icon-btn" id="btn-open-settings" title="Настройки" aria-label="Настройки">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -87,13 +87,13 @@
       <!-- Навигация по неделе -->
       <section class="week-navigation" id="week-navigation">
         <div class="week-header-row">
-          <button type="button" class="btn-subtle" id="btn-prev-week" title="Предыдущая неделя">
+          <button type="button" class="btn-subtle" id="btn-prev-week" aria-label="Предыдущая неделя" title="Предыдущая неделя">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
           <span class="week-period-label" id="week-period-label">Загрузка…</span>
           <div class="week-header-buttons">
             <button type="button" class="chip-today" id="btn-today">Сегодня</button>
-            <button type="button" class="btn-subtle" id="btn-next-week" title="Следующая неделя">
+            <button type="button" class="btn-subtle" id="btn-next-week" aria-label="Следующая неделя" title="Следующая неделя">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
             </button>
           </div>
@@ -558,7 +558,7 @@
     <section class="screen" id="screen-income">
       <div class="screen-content">
         <div class="screen-sub-header">
-          <button type="button" class="btn-subtle" id="btn-back-from-income">
+          <button type="button" class="btn-subtle" id="btn-back-from-income" aria-label="Назад">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
           <h2>Доходы</h2>
@@ -579,11 +579,11 @@
         </div>
 
         <div class="income-nav">
-          <button type="button" class="btn-subtle" id="btn-income-prev" title="Назад">
+          <button type="button" class="btn-subtle" id="btn-income-prev" aria-label="Предыдущий период" title="Назад">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
           </button>
           <div class="income-nav-label" id="income-period-label">…</div>
-          <button type="button" class="btn-subtle" id="btn-income-next" title="Вперёд">
+          <button type="button" class="btn-subtle" id="btn-income-next" aria-label="Следующий период" title="Вперёд">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
           </button>
         </div>
@@ -661,7 +661,7 @@
     <section class="screen" id="screen-clients">
       <div class="screen-content">
         <div class="screen-sub-header">
-          <button type="button" class="btn-subtle" id="btn-back-from-clients">
+          <button type="button" class="btn-subtle" id="btn-back-from-clients" aria-label="Назад">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
             Назад
           </button>
@@ -912,14 +912,14 @@
 
   <!-- Модули подключаются обычными скриптами в этом порядке: у них общая глобальная область,
        поэтому порядок важен (core объявляет state и утилиты, app.js в конце — инициализация). -->
-  <script src="/js/core.js?v=13"></script>
-  <script src="/js/schedule.js?v=13"></script>
-  <script src="/js/appointment-form.js?v=13"></script>
-  <script src="/js/calendar-search.js?v=13"></script>
-  <script src="/js/notes-settings.js?v=13"></script>
-  <script src="/js/clients.js?v=13"></script>
-  <script src="/js/finance.js?v=13"></script>
-  <script src="/js/admin.js?v=13"></script>
-  <script src="/app.js?v=13"></script>
+  <script src="/js/core.js?v=14"></script>
+  <script src="/js/schedule.js?v=14"></script>
+  <script src="/js/appointment-form.js?v=14"></script>
+  <script src="/js/calendar-search.js?v=14"></script>
+  <script src="/js/notes-settings.js?v=14"></script>
+  <script src="/js/clients.js?v=14"></script>
+  <script src="/js/finance.js?v=14"></script>
+  <script src="/js/admin.js?v=14"></script>
+  <script src="/app.js?v=14"></script>
 </body>
 </html>
