@@ -7,6 +7,7 @@ import { parseAmount } from './money';
 import { SERVICES } from './services';
 import { isStatus } from './status';
 import { cleanCurrency } from './settings';
+import { validateMembership } from './memberships';
 import { normalizeName } from './text';
 import { isDate, isTime } from './time';
 import { ensureUser, updateUserSettings } from '../db';
@@ -21,6 +22,9 @@ export interface RestoreAppointment {
 }
 export interface RestoreClient { name: string; phone: string | null; telegram: string | null; notes: string | null; birthday: string | null }
 export interface RestoreExpense { date: string; name: string; amount: number }
+export interface RestoreMembership {
+  client_name: string; sessions: number; price: number | null; start_date: string; expires_on: string | null; note: string | null;
+}
 export interface RestoreSettings {
   notify_enabled?: boolean; notify_time?: string; tz?: string; notify_new_appt?: boolean;
   notify_note?: boolean; notify_summary?: boolean;
@@ -30,6 +34,7 @@ export interface RestoreSettings {
 export interface RestoreData {
   appointments: RestoreAppointment[];
   clients: RestoreClient[];
+  memberships: RestoreMembership[];
   expenses: RestoreExpense[];
   day_notes: { date: string; text: string }[];
   prices: Record<string, number>;
@@ -37,7 +42,7 @@ export interface RestoreData {
 }
 export interface Counted { ok: number; skipped: number }
 export interface RestoreReport {
-  appointments: Counted; clients: Counted; expenses: Counted; day_notes: Counted;
+  appointments: Counted; clients: Counted; memberships: Counted; expenses: Counted; day_notes: Counted;
   prices: number; settings: boolean;
 }
 
@@ -45,6 +50,14 @@ const str = (v: unknown, max: number): string | null => {
   const s = typeof v === 'string' ? v.trim() : v === null || v === undefined ? '' : String(v).trim();
   return s ? s.slice(0, max) : null;
 };
+
+function sanitizeMembership(r: any): RestoreMembership | null {
+  const client_name = str(r?.client_name, 100);
+  if (!client_name) return null;
+  const [d] = validateMembership(r, '1970-01-01'); // дата начала в копии обязательна, «сегодня» подставлять нельзя
+  if (!d || !isDate(r?.start_date)) return null;
+  return { client_name, ...d };
+}
 
 function sanitizeAppointment(r: any): RestoreAppointment | null {
   if (!isDate(r?.date) || !isTime(r?.start_time)) return null;
@@ -121,7 +134,7 @@ export function sanitizeBackup(raw: any): { ok: true; data: RestoreData; report:
   }
 
   const lists: Record<string, any[]> = {};
-  for (const key of ['appointments', 'clients', 'expenses', 'day_notes']) {
+  for (const key of ['appointments', 'clients', 'memberships', 'expenses', 'day_notes']) {
     const l = list(raw, key);
     if (typeof l === 'string') return { ok: false, error: l };
     lists[key] = l;
@@ -138,6 +151,9 @@ export function sanitizeBackup(raw: any): { ok: true; data: RestoreData; report:
     seenClients.add(name);
     clients.push({ name, phone: str(r?.phone, 50), telegram: str(r?.telegram, 100), notes: str(r?.notes, 2000), birthday: cleanBirthday(r?.birthday) });
   }
+
+  const memberships: RestoreMembership[] = [];
+  for (const r of lists.memberships) { const m = sanitizeMembership(r); if (m) memberships.push(m); }
 
   const expenses: RestoreExpense[] = [];
   for (const r of lists.expenses) { const e = sanitizeExpense(r); if (e) expenses.push(e); }
@@ -161,21 +177,22 @@ export function sanitizeBackup(raw: any): { ok: true; data: RestoreData; report:
   const report: RestoreReport = {
     appointments: { ok: appointments.length, skipped: lists.appointments.length - appointments.length },
     clients: { ok: clients.length, skipped: lists.clients.length - clients.length },
+    memberships: { ok: memberships.length, skipped: lists.memberships.length - memberships.length },
     expenses: { ok: expenses.length, skipped: lists.expenses.length - expenses.length },
     day_notes: { ok: day_notes.length, skipped: lists.day_notes.length - day_notes.length },
     prices: Object.keys(prices).length,
     settings: Object.keys(settings).length > 0,
   };
-  const total = report.appointments.ok + report.clients.ok + report.expenses.ok + report.day_notes.ok + report.prices;
+  const total = report.appointments.ok + report.clients.ok + report.memberships.ok + report.expenses.ok + report.day_notes.ok + report.prices;
   if (total === 0 && !report.settings) return { ok: false, error: 'В файле нет данных для восстановления' };
-  return { ok: true, data: { appointments, clients, expenses, day_notes, prices, settings }, report };
+  return { ok: true, data: { appointments, clients, memberships, expenses, day_notes, prices, settings }, report };
 }
 
 /** Заменяет ВСЕ данные тренера содержимым копии — одной транзакцией (при ошибке ничего не меняется). */
 export async function restoreBackup(db: D1Database, userId: number, tzFallback: string, data: RestoreData): Promise<void> {
   await ensureUser(db, userId, tzFallback);
   const stmts: D1PreparedStatement[] = [
-    ...['appointments', 'clients', 'expenses', 'day_notes', 'service_prices'].map((t) =>
+    ...['appointments', 'clients', 'memberships', 'expenses', 'day_notes', 'service_prices'].map((t) =>
       db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(userId),
     ),
     ...data.appointments.map((a) =>
@@ -191,6 +208,14 @@ export async function restoreBackup(db: D1Database, userId: number, tzFallback: 
       db
         .prepare('INSERT INTO clients (user_id, name, phone, telegram, notes, birthday) VALUES (?,?,?,?,?,?)')
         .bind(userId, c.name, c.phone, c.telegram, c.notes, c.birthday),
+    ),
+    ...data.memberships.map((m) =>
+      db
+        .prepare(
+          `INSERT INTO memberships (user_id, client_name, sessions, price, start_date, expires_on, note)
+           VALUES (?,?,?,?,?,?,?)`,
+        )
+        .bind(userId, m.client_name, m.sessions, m.price, m.start_date, m.expires_on, m.note),
     ),
     ...data.expenses.map((e) =>
       db.prepare('INSERT INTO expenses (user_id, date, name, amount) VALUES (?,?,?,?)').bind(userId, e.date, e.name, e.amount),

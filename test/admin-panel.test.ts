@@ -90,7 +90,7 @@ describe('чистые функции', () => {
     for (const m of ['GET', 'POST', 'PUT', 'DELETE']) expect(actAsAllowed(m, '/api/appointments')).toBe(true);
     expect(actAsAllowed('POST', '/api/appointments/check')).toBe(true);
     expect(actAsAllowed('DELETE', '/api/appointments/5')).toBe(true);
-    for (const p of ['/api/days', '/api/days/slots', '/api/search', '/api/clients', '/api/clients/3', '/api/prices', '/api/settings', '/api/notes/2026-10-14']) {
+    for (const p of ['/api/days', '/api/days/slots', '/api/search', '/api/clients', '/api/clients/3', '/api/prices', '/api/settings', '/api/notes/2026-10-14', '/api/memberships/summary']) {
       expect(actAsAllowed('GET', p)).toBe(true);
       expect(actAsAllowed('PUT', p)).toBe(false);
       expect(actAsAllowed('POST', p)).toBe(false);

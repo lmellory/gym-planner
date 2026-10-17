@@ -1,5 +1,7 @@
 // Расчёт периодов и корзин для раздела «Доходы». Чистые функции — без обращения к БД.
 import { addDays } from './time';
+import { isHeld } from './memberships';
+import type { ApptSlot } from './memberships';
 
 export type Period = 'week' | 'month' | 'year';
 export const isPeriod = (s: unknown): s is Period => s === 'week' || s === 'month' || s === 'year';
@@ -35,6 +37,8 @@ export interface Bucket {
   unpaid: number;
   expense: number; // траты
   expense_count: number;
+  membership: number;       // продано абонементов на сумму (входит в sum)
+  membership_count: number; // продано абонементов
 }
 
 export interface IncomeReport {
@@ -56,6 +60,9 @@ export interface IncomeReport {
   expected_count: number;
   no_show: number;        // записей «не пришёл» в периоде
   cancelled: number;      // записей «отменена» в периоде
+  membership_total: number; // продано абонементов на сумму (уже входит в total)
+  membership_count: number; // продано абонементов
+  covered: number;          // проведено занятий по абонементам (их цена в доход не идёт)
 }
 
 export interface IncomeExtras {
@@ -63,6 +70,9 @@ export interface IncomeExtras {
   expected_count: number;
   no_show: number;
   cancelled: number;
+  sales: ExpenseDayRow[];      // продажи абонементов по дням (сумма, число)
+  prev_sales: ExpenseDayRow[]; // то же за прошлый период
+  covered: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -97,6 +107,7 @@ export function buildBuckets(
   to: string,
   rows: DayRow[],
   expenseRows: ExpenseDayRow[] = [],
+  salesRows: ExpenseDayRow[] = [],
 ): Bucket[] {
   const buckets: Bucket[] = [];
   if (period === 'year') {
@@ -106,12 +117,12 @@ export function buildBuckets(
         key: `${y}-${pad(m)}`,
         from: `${y}-${pad(m)}-01`,
         to: `${y}-${pad(m)}-${pad(daysInMonth(y, m))}`,
-        sum: 0, paid: 0, unpaid: 0, expense: 0, expense_count: 0,
+        sum: 0, paid: 0, unpaid: 0, expense: 0, expense_count: 0, membership: 0, membership_count: 0,
       });
     }
   } else {
     for (let d = from; d <= to; d = addDays(d, 1)) {
-      buckets.push({ key: d, from: d, to: d, sum: 0, paid: 0, unpaid: 0, expense: 0, expense_count: 0 });
+      buckets.push({ key: d, from: d, to: d, sum: 0, paid: 0, unpaid: 0, expense: 0, expense_count: 0, membership: 0, membership_count: 0 });
     }
   }
   const byKey = new Map(buckets.map((b) => [b.key, b]));
@@ -128,7 +139,62 @@ export function buildBuckets(
     b.expense += Number(r.sum) || 0;
     b.expense_count += Number(r.count) || 0;
   }
+  for (const r of salesRows) {
+    const b = byKey.get(period === 'year' ? r.date.slice(0, 7) : r.date);
+    if (!b) continue;
+    const sum = Number(r.sum) || 0;
+    b.sum += sum; // продажа абонемента — доход дня продажи
+    b.membership += sum;
+    b.membership_count += Number(r.count) || 0;
+  }
   return buckets;
+}
+
+/**
+ * Записи, покрытые абонементами, не приносят отдельного дохода: деньги уже получены при продаже.
+ * Возвращает поправки: по дням для проведённых записей периода (вычитаются из доходов), сумму ожидаемых
+ * (будущих) записей периода и число проведённых.
+ */
+export function coverageAdjustments(
+  covered: ApptSlot[],
+  from: string,
+  to: string,
+  nowDate: string,
+  nowTime: string,
+): { rows: DayRow[]; expected: { sum: number; count: number }; held: number } {
+  const byDate = new Map<string, DayRow>();
+  const expected = { sum: 0, count: 0 };
+  let held = 0;
+  for (const a of covered) {
+    if (a.date < from || a.date > to) continue;
+    if (isHeld(a, nowDate, nowTime)) {
+      held++;
+      const row = byDate.get(a.date) ?? { date: a.date, sum: 0, paid: 0, unpaid: 0 };
+      row.sum += a.price ?? 0;
+      if (a.price === null) row.unpaid++;
+      else row.paid++;
+      byDate.set(a.date, row);
+    } else if (a.price !== null) {
+      expected.sum += a.price;
+      expected.count++;
+    }
+  }
+  return { rows: [...byDate.values()], expected, held };
+}
+
+/** Вычитает поправки по дням из строк доходов. */
+export function subtractRows(rows: DayRow[], adjustments: DayRow[]): DayRow[] {
+  const adj = new Map(adjustments.map((r) => [r.date, r]));
+  return rows.map((r) => {
+    const a = adj.get(r.date);
+    if (!a) return r;
+    return {
+      date: r.date,
+      sum: (Number(r.sum) || 0) - a.sum,
+      paid: (Number(r.paid) || 0) - a.paid,
+      unpaid: (Number(r.unpaid) || 0) - a.unpaid,
+    };
+  });
 }
 
 export function buildIncomeReport(
@@ -142,17 +208,21 @@ export function buildIncomeReport(
   expenseItems: ExpenseNameRow[] = [],
   extras: Partial<IncomeExtras> = {},
 ): IncomeReport {
-  const buckets = buildBuckets(period, from, to, rows, expenseRows);
+  const buckets = buildBuckets(period, from, to, rows, expenseRows, extras.sales ?? []);
   const total = buckets.reduce((s, b) => s + b.sum, 0);
+  const membership_total = buckets.reduce((s, b) => s + b.membership, 0);
+  const membership_count = buckets.reduce((s, b) => s + b.membership_count, 0);
   const paid = buckets.reduce((s, b) => s + b.paid, 0);
   const unpaid = buckets.reduce((s, b) => s + b.unpaid, 0);
-  const prev_total = prevRows.reduce((s, r) => s + (Number(r.sum) || 0), 0);
+  const prev_total =
+    prevRows.reduce((s, r) => s + (Number(r.sum) || 0), 0) +
+    (extras.prev_sales ?? []).reduce((s, r) => s + (Number(r.sum) || 0), 0);
   const total_expense = buckets.reduce((s, b) => s + b.expense, 0);
   const expense_count = buckets.reduce((s, b) => s + b.expense_count, 0);
   const prev_expense = prevExpenseRows.reduce((s, r) => s + (Number(r.sum) || 0), 0);
   return {
     period, from, to, buckets, total, paid, unpaid,
-    avg: paid ? Math.round(total / paid) : 0,
+    avg: paid ? Math.round((total - membership_total) / paid) : 0, // средний чек — только по занятиям, без продаж абонементов
     prev_total,
     total_expense, expense_count, prev_expense,
     profit: total - total_expense,
@@ -161,5 +231,8 @@ export function buildIncomeReport(
     expected_count: extras.expected_count ?? 0,
     no_show: extras.no_show ?? 0,
     cancelled: extras.cancelled ?? 0,
+    membership_total,
+    membership_count,
+    covered: extras.covered ?? 0,
   };
 }

@@ -75,7 +75,7 @@ export function actAsAllowed(method: string, pathname: string): boolean {
   const under = (prefix: string) => pathname === prefix || pathname.startsWith(prefix + '/');
   if (under('/api/appointments')) return true;
   if (method !== 'GET') return false;
-  return ['/api/days', '/api/search', '/api/clients', '/api/prices', '/api/settings', '/api/notes'].some(under);
+  return ['/api/days', '/api/search', '/api/clients', '/api/prices', '/api/settings', '/api/notes', '/api/memberships'].some(under);
 }
 
 /**
