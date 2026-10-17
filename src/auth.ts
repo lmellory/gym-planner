@@ -63,13 +63,16 @@ export function parseInitDataUser(initData: string): { id: number; name: string;
 }
 
 /**
- * Что администратор может делать от имени тренера (заголовок X-Act-As): только записи.
- * Записи — любые действия; чтение — то, что нужно форме записи и расписанию (дни, окна, клиенты для подсказок, цены, настройки, заметки).
- * Всё остальное (доходы, траты, клиенты и заметки на запись, настройки, прайс, импорт, экспорт) в этом режиме закрыто.
+ * Что администратор может делать от имени тренера (заголовок X-Act-As): записи и настройки тренера.
+ * Записи — любые действия; настройки — целиком (админ задаёт персонализацию и график за тренера);
+ * чтение — то, что нужно форме записи и расписанию (дни, окна, клиенты для подсказок, цены, заметки).
+ * Всё остальное (доходы, траты, клиенты на запись, прайс, импорт, экспорт) в этом режиме закрыто.
  */
 export function actAsAllowed(method: string, pathname: string): boolean {
   const under = (prefix: string) => pathname === prefix || pathname.startsWith(prefix + '/');
   if (under('/api/appointments')) return true;
+  // Настройки — и чтение, и запись: админ настраивает персонализацию тренера из админ-панели
+  if (under('/api/settings')) return true;
   if (method !== 'GET') return false;
   return ['/api/days', '/api/search', '/api/clients', '/api/prices', '/api/settings', '/api/notes', '/api/memberships'].some(under);
 }
