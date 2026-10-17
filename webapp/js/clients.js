@@ -178,6 +178,11 @@ async function openClientView(id) {
       tgRow.style.display = 'flex';
       tgLink.textContent = `@${cleanTg}`;
       tgLink.href = `https://t.me/${cleanTg}`;
+      // Внутри Telegram обычный <a> на iOS может не открыться — ведём через WebApp API
+      tgLink.onclick = (ev) => {
+        ev.preventDefault();
+        openExternal(`https://t.me/${cleanTg}`);
+      };
     } else if (tgRow) {
       tgRow.style.display = 'none';
     }

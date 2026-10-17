@@ -301,6 +301,11 @@ async function exportData(format = 'csv') {
 }
 
 document.getElementById('btn-save-settings')?.addEventListener('click', saveSettings);
+document.getElementById('link-privacy')?.addEventListener('click', (ev) => {
+  ev.preventDefault();
+  // Открываем во внешнем браузере: приложение остаётся на месте
+  openExternal(new URL('/privacy.html', location.href).href);
+});
 document.getElementById('btn-export-csv')?.addEventListener('click', () => exportData('csv'));
 document.getElementById('btn-export-json')?.addEventListener('click', () => exportData('json'));
 document.getElementById('btn-save-prices')?.addEventListener('click', savePrices);

@@ -15,6 +15,7 @@ import { prices } from './api/prices';
 import { importer } from './api/import';
 import { exporter } from './api/export';
 import { adminApi, me } from './api/admin';
+import { clientLog } from './api/clientlog';
 import { webhook } from './bot/webhook';
 import { runNotifications, runWeeklyBackups } from './cron';
 import { createTursoD1 } from './lib/turso';
@@ -39,6 +40,10 @@ app.use('/api/*', async (c, next) => {
   }
   await next();
 });
+
+// Ошибки с клиента принимаем без подписи: сбой может случиться до входа в приложение.
+// Поэтому роут регистрируется ДО authMiddleware — иначе он бы отвечал 403 и логи не доходили.
+app.route('/api/client-log', clientLog);
 
 // API Mini App — только с валидной подписью Telegram: тренера с доступом (/adduser, минус /ban) и администраторы
 app.use('/api/*', authMiddleware);
