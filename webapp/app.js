@@ -687,6 +687,7 @@ function openForm(appt = null) {
   updateServiceUI();
   updateRepeatUI();
   updateClientMatchBadge();
+  updateMembershipBadge();
   goScreen('form');
   checkConflicts();
 }
@@ -715,6 +716,69 @@ function updateClientMatchBadge() {
 }
 
 document.getElementById('form-appt-client')?.addEventListener('input', updateClientMatchBadge);
+
+// ===== Абонемент клиента в форме записи =====
+const ruDate = (iso) => String(iso).split('-').reverse().join('.');
+let membershipBadgeSeq = 0;
+let membershipBadgeTimer = null;
+
+// Что показать по итогу summary абонемента с сервера; null — ничего (абонементов не было)
+function membershipBadgeInfo(s) {
+  const left = (n) => `${n} ${plural(n, 'занятие', 'занятия', 'занятий')}`;
+  const planned = s.planned ? ` (всего осталось ${s.remaining}, записано вперёд ${s.planned})` : '';
+  const until = s.expires_on ? ` · до ${ruDate(s.expires_on)}` : '';
+  switch (s.state) {
+    case 'active':
+      return { warn: false, html: `🎟 <b>Абонемент:</b> свободно ${left(s.free)}${planned}${until}` };
+    case 'last':
+      return { warn: true, html: `⚠️ <b>Последнее занятие по абонементу</b>${planned}${until}` };
+    case 'exhausted':
+      return {
+        warn: true,
+        html: s.remaining > 0
+          ? '⚠️ <b>Все оставшиеся занятия по абонементу уже записаны</b>: эта запись оплачивается отдельно'
+          : '⚠️ <b>Абонемент закончился</b>: запись оплачивается отдельно',
+      };
+    case 'expired':
+      return { warn: true, html: '⚠️ <b>Срок абонемента истёк</b>' };
+    default:
+      return null;
+  }
+}
+
+// Подсказка работает только для клиентов из базы: абонемент привязан к точному имени
+function updateMembershipBadge() {
+  clearTimeout(membershipBadgeTimer);
+  const badge = document.getElementById('membership-badge');
+  const input = document.getElementById('form-appt-client');
+  if (!badge || !input) return;
+  const name = input.value.trim();
+  const known = name && cachedClients.some((c) => c.name === name);
+  if (!known) {
+    membershipBadgeSeq++;
+    badge.style.display = 'none';
+    return;
+  }
+  membershipBadgeTimer = setTimeout(async () => {
+    const seq = ++membershipBadgeSeq;
+    try {
+      const s = await api(`/memberships/summary?name=${encodeURIComponent(name)}`);
+      if (seq !== membershipBadgeSeq) return; // клиент уже сменился
+      const info = membershipBadgeInfo(s);
+      if (!info) {
+        badge.style.display = 'none';
+        return;
+      }
+      badge.innerHTML = info.html;
+      badge.classList.toggle('warn', info.warn);
+      badge.style.display = 'block';
+    } catch {
+      badge.style.display = 'none';
+    }
+  }, 250);
+}
+
+document.getElementById('form-appt-client')?.addEventListener('input', updateMembershipBadge);
 
 function updateServiceUI() {
   // Селектор вида занятия
@@ -1555,9 +1619,11 @@ async function restoreFromFile(file) {
     return; // api() уже показал причину
   }
   const r = preview.report;
-  const skipped = r.appointments.skipped + r.clients.skipped + r.expenses.skipped + r.day_notes.skipped;
+  const skipped = r.appointments.skipped + r.clients.skipped + (r.memberships?.skipped || 0) + r.expenses.skipped + r.day_notes.skipped;
   const message =
-    `Восстановить из копии?\n\nЗаписей: ${r.appointments.ok}\nКлиентов: ${r.clients.ok}\nТрат: ${r.expenses.ok}\nЗаметок: ${r.day_notes.ok}` +
+    `Восстановить из копии?\n\nЗаписей: ${r.appointments.ok}\nКлиентов: ${r.clients.ok}` +
+    (r.memberships?.ok ? `\nАбонементов: ${r.memberships.ok}` : '') +
+    `\nТрат: ${r.expenses.ok}\nЗаметок: ${r.day_notes.ok}` +
     (skipped ? `\nПропущено повреждённых строк: ${skipped}` : '') +
     `\n\nВсе текущие данные будут заменены.`;
   confirmDialog(message, async (confirmed) => {
@@ -1664,6 +1730,7 @@ document.getElementById('btn-export-finance')?.addEventListener('click', exportF
 
 let cachedClients = [];
 let currentViewingClientId = null;
+let currentMemberships = [];
 
 async function loadClientsDatalist() {
   try {
@@ -1869,11 +1936,130 @@ async function openClientView(id) {
       }
     }
 
+    renderMembershipList(data.memberships || []);
+
     if (modal) modal.style.display = 'flex';
   } catch (err) {
     console.error('Ошибка загрузки карточки клиента:', err);
   }
 }
+
+// ===== Абонементы в карточке клиента =====
+const MEMBERSHIP_STATE_RU = { active: 'действует', finished: 'занятия закончились', expired: 'срок истёк', upcoming: 'ещё не началась' };
+
+function renderMembershipList(items) {
+  currentMemberships = items;
+  const list = document.getElementById('client-membership-list');
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<div style="color: var(--hint-color); font-size: 13px; margin-top: 6px;">Абонементов пока нет</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const m of items) {
+    const stateCls = m.state === 'active' ? 'is-active' : m.state === 'upcoming' ? '' : 'is-warn';
+    const term = m.expires_on ? `с ${ruDate(m.start_date)} до ${ruDate(m.expires_on)}` : `с ${ruDate(m.start_date)}, бессрочный`;
+    const price = m.price !== null && m.price !== undefined ? formatMoney(m.price) : 'цена не указана';
+    const planned = m.planned ? ` · записано вперёд: ${m.planned}` : '';
+
+    const el = document.createElement('div');
+    el.className = 'membership-item';
+    el.innerHTML = `
+      <div class="membership-item-top">
+        <span class="membership-item-title">${m.sessions} ${plural(m.sessions, 'занятие', 'занятия', 'занятий')} · осталось ${m.remaining}</span>
+        <span class="membership-state ${stateCls}">${MEMBERSHIP_STATE_RU[m.state] || ''}</span>
+      </div>
+      <div class="membership-item-meta">${term} · ${price}${planned}</div>
+      <div class="membership-item-note membership-item-meta"></div>
+      <div class="membership-item-actions">
+        <button type="button" data-act="edit">✏️ Изменить</button>
+        <button type="button" data-act="delete">🗑 Удалить</button>
+      </div>
+    `;
+    const noteEl = el.querySelector('.membership-item-note');
+    if (m.note) noteEl.textContent = `💬 ${m.note}`;
+    else noteEl.remove();
+    el.querySelector('[data-act="edit"]').addEventListener('click', () => openMembershipEdit(m));
+    el.querySelector('[data-act="delete"]').addEventListener('click', () => deleteMembershipItem(m));
+    list.appendChild(el);
+  }
+}
+
+function openMembershipEdit(m = null) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  document.getElementById('modal-membership-title').textContent = m ? 'Изменить абонемент' : 'Новый абонемент';
+  set('edit-membership-id', m ? m.id : '');
+  set('edit-membership-sessions', m ? m.sessions : '');
+  set('edit-membership-price', m && m.price !== null ? m.price : '');
+  set('edit-membership-start', m ? m.start_date : todayStr);
+  set('edit-membership-expires', m && m.expires_on ? m.expires_on : '');
+  set('edit-membership-note', m && m.note ? m.note : '');
+  document.getElementById('modal-membership-edit').style.display = 'flex';
+}
+
+function closeMembershipEdit() {
+  const modal = document.getElementById('modal-membership-edit');
+  if (modal) modal.style.display = 'none';
+}
+
+async function saveMembership() {
+  const val = (id) => document.getElementById(id)?.value?.trim() ?? '';
+  const id = val('edit-membership-id');
+  const sessions = Number(val('edit-membership-sessions'));
+  if (!Number.isInteger(sessions) || sessions < 1 || sessions > 1000) return showToast('Укажите число занятий (от 1 до 1000)');
+
+  const priceRaw = val('edit-membership-price');
+  let price = null;
+  if (priceRaw !== '') {
+    price = Number(priceRaw);
+    if (!Number.isInteger(price) || price < 0) return showToast('Цена — целое число, например 8000');
+  }
+  const start_date = val('edit-membership-start');
+  if (!start_date) return showToast('Укажите дату продажи');
+  const expires_on = val('edit-membership-expires') || null;
+  if (expires_on && expires_on < start_date) return showToast('Срок действия не может закончиться раньше продажи');
+  const note = val('edit-membership-note') || null;
+
+  try {
+    if (id) {
+      await api(`/memberships/${id}`, { method: 'PUT', body: JSON.stringify({ sessions, price, start_date, expires_on, note }) });
+      showToast('Абонемент обновлён ✅');
+    } else {
+      await api('/memberships', {
+        method: 'POST',
+        body: JSON.stringify({ client_id: currentViewingClientId, sessions, price, start_date, expires_on, note }),
+      });
+      showToast('Абонемент добавлен ✅');
+    }
+    haptic('success');
+    closeMembershipEdit();
+    await openClientView(currentViewingClientId);
+  } catch (err) {
+    console.error('Ошибка сохранения абонемента:', err);
+  }
+}
+
+function deleteMembershipItem(m) {
+  confirmDialog(`Удалить абонемент на ${m.sessions} ${plural(m.sessions, 'занятие', 'занятия', 'занятий')}? Занятия клиента останутся, но перестанут списываться с него.`, async (confirmed) => {
+    if (!confirmed) return;
+    try {
+      await api(`/memberships/${m.id}`, { method: 'DELETE' });
+      haptic('success');
+      showToast('Абонемент удалён');
+      await openClientView(currentViewingClientId);
+    } catch (err) {
+      console.error('Ошибка удаления абонемента:', err);
+    }
+  });
+}
+
+document.getElementById('btn-membership-add')?.addEventListener('click', () => {
+  haptic('light');
+  openMembershipEdit(null);
+});
+document.getElementById('btn-save-membership')?.addEventListener('click', saveMembership);
+document.getElementById('btn-close-membership-edit')?.addEventListener('click', closeMembershipEdit);
+document.getElementById('btn-cancel-membership-edit')?.addEventListener('click', closeMembershipEdit);
 
 function closeClientView() {
   const modal = document.getElementById('modal-client-view');
@@ -2096,9 +2282,11 @@ function renderIncomeSummary() {
   const prev = isExp ? d.prev_expense : d.prev_total;
   if (selected) {
     const n = isExp ? selected.expense_count : selected.paid;
-    deltaEl.textContent = n
+    const base = n
       ? `${isExp ? 'Покупок' : 'Записей с ценой'}: ${n}`
       : (isExp ? 'Трат нет' : 'Нет записей с ценой');
+    const sold = !isExp && selected.membership_count ? `Абонементов продано: ${selected.membership_count}` : '';
+    deltaEl.textContent = sold ? (n ? `${base} · ${sold}` : sold) : base;
   } else if (prev > 0) {
     const pct = Math.round(((cur - prev) / prev) * 100);
     const prevWord = { week: 'прошлой неделе', month: 'прошлому месяцу', year: 'прошлому году' }[d.period];
@@ -2127,7 +2315,7 @@ function renderIncomeSummary() {
   if (d.unpaid > 0) {
     noteEl.textContent = unpricedPhrase(d.unpaid);
     noteEl.style.display = 'block';
-  } else if (d.paid === 0) {
+  } else if (d.paid === 0 && !d.membership_total && !d.covered) {
     noteEl.textContent = 'Укажи цену в записях — и здесь появятся доходы.';
     noteEl.style.display = 'block';
   } else {
@@ -2139,6 +2327,12 @@ function renderIncomeSummary() {
     const lines = [];
     if (d.expected > 0) {
       lines.push(`⏳ Ожидается: ${formatMoney(d.expected)} (${d.expected_count} ${plural(d.expected_count, 'запись', 'записи', 'записей')})`);
+    }
+    if (d.membership_count > 0) {
+      lines.push(`🎟 Продано абонементов: ${d.membership_count} на ${formatMoney(d.membership_total)} (входит в доход)`);
+    }
+    if (d.covered > 0) {
+      lines.push(`🎟 Проведено занятий по абонементам: ${d.covered} (отдельно не считаются)`);
     }
     const missed = (d.no_show || 0) + (d.cancelled || 0);
     if (missed > 0) {

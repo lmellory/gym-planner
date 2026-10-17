@@ -384,6 +384,58 @@ describe('повторяющиеся записи: форма и удалени�
   });
 });
 
+describe('абонементы: карточка клиента и подсказка в форме записи', () => {
+  const summaryOf = async () => (await calls(OWNER, '/api/memberships/summary?name=' + encodeURIComponent('Абонементная')));
+
+  it('в карточке клиента сначала пусто; продажа из модалки появляется в списке с остатком', async () => {
+    // одно занятие уже проведено (12 октября), поэтому из 5 останется 4
+    const r = await api(env, OWNER, 'POST', '/api/appointments', { date: '2026-10-12', start_time: '08:00', client_name: 'Абонементная', service: 'personal' });
+    expect(r.status).toBe(201);
+    const id = (await calls(OWNER, '/api/clients')).find((c: any) => c.name === 'Абонементная').id;
+
+    await w.openClientView(id);
+    expect($('#modal-client-view').style.display).toBe('flex');
+    expect(txt('#client-membership-list')).toContain('Абонементов пока нет');
+
+    click('#btn-membership-add');
+    expect($('#modal-membership-edit').style.display).toBe('flex');
+    setVal('#edit-membership-sessions', '5');
+    setVal('#edit-membership-price', '4000');
+    setVal('#edit-membership-start', '2026-10-12');
+    click('#btn-save-membership');
+    await until(() => txt('#client-membership-list').includes('осталось 4'));
+    expect(txt('#client-membership-list')).toContain('5 занятий');
+    expect(txt('#client-membership-list')).toContain('действует');
+    expect($('#modal-membership-edit').style.display).toBe('none');
+    expect(await summaryOf()).toMatchObject({ state: 'active', remaining: 4 });
+  });
+
+  it('в форме записи у клиента из базы виден остаток абонемента', async () => {
+    await w.loadClientsDatalist(); // подсказка работает для клиентов из базы
+    w.openForm({ client_name: 'Абонементная' });
+    await until(() => $('#membership-badge').style.display === 'block');
+    expect(txt('#membership-badge')).toContain('Абонемент');
+    expect(txt('#membership-badge')).toContain('свободно 4 занятия');
+    expect($('#membership-badge').classList.contains('warn')).toBe(false);
+
+    setVal('#form-appt-client', 'Незнакомец'); // клиента нет в базе — подсказки нет
+    $('#form-appt-client').dispatchEvent(new w.Event('input', { bubbles: true }));
+    expect($('#membership-badge').style.display).toBe('none');
+  });
+
+  it('удаление абонемента из карточки: список снова пуст, подсказка в форме пропадает', async () => {
+    const id = (await calls(OWNER, '/api/clients')).find((c: any) => c.name === 'Абонементная').id;
+    await w.openClientView(id);
+    click('#client-membership-list [data-act="delete"]');
+    await until(() => txt('#client-membership-list').includes('Абонементов пока нет'));
+    expect(await summaryOf()).toMatchObject({ state: 'none', has_any: false });
+
+    w.openForm({ client_name: 'Абонементная' });
+    await new Promise((r) => setTimeout(r, 400));
+    expect($('#membership-badge').style.display).toBe('none');
+  });
+});
+
 describe('здоровье страницы', () => {
   it('за весь сценарий не было ошибок скриптов', () => {
     expect(errors).toEqual([]);

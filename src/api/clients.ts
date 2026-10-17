@@ -2,12 +2,15 @@ import { Hono } from 'hono';
 import type { AppVars, Env } from '../types';
 import {
   deleteClient,
+  ensureUser,
   getClient,
   getClientAppointments,
+  getClientMemberships,
   insertClient,
   listClients,
   updateClient,
 } from '../db';
+import { nowInTz } from '../lib/time';
 
 export const clients = new Hono<{ Bindings: Env; Variables: AppVars }>();
 
@@ -29,7 +32,10 @@ clients.get('/:id', async (c) => {
   if (!client) return c.json({ error: 'not found' }, 404);
 
   const history = await getClientAppointments(c.env.DB, userId, client.name);
-  return c.json({ client, history });
+  const u = await ensureUser(c.env.DB, userId, c.env.TZ);
+  const now = nowInTz(u.tz);
+  const { views, summary } = await getClientMemberships(c.env.DB, userId, client.name, now.date, now.time);
+  return c.json({ client, history, memberships: views, membership_summary: summary });
 });
 
 export function cleanBirthday(val: unknown): string | null {
