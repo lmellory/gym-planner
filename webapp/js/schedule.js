@@ -257,7 +257,33 @@ function renderAppointmentsList() {
   }
 
   listEl.innerHTML = '';
+  let lastActiveEndMins = null;
+
   for (const a of state.appointments) {
+    if (a.status === 'scheduled') {
+      const startMins = timeToMinutes(a.start_time);
+      if (lastActiveEndMins !== null && startMins - lastActiveEndMins >= 30) {
+        const gapMins = startMins - lastActiveEndMins;
+        const gapStartStr = minutesToTime(lastActiveEndMins);
+        const gapEl = document.createElement('div');
+        gapEl.className = 'appt-gap-indicator';
+        gapEl.title = `Свободное время: ${formatGapDuration(gapMins)}`;
+        gapEl.innerHTML = `
+          <span class="appt-gap-line"></span>
+          <span class="appt-gap-badge">☕ Окно ${formatGapDuration(gapMins)} <span class="appt-gap-action">+ запись</span></span>
+          <span class="appt-gap-line"></span>
+        `;
+        gapEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          haptic('light');
+          openForm({ date: state.selectedDate, start_time: gapStartStr });
+        });
+        listEl.appendChild(gapEl);
+      }
+      const endMins = a.end_time ? timeToMinutes(a.end_time) : (startMins + 60);
+      lastActiveEndMins = lastActiveEndMins === null ? endMins : Math.max(lastActiveEndMins, endMins);
+    }
+
     const card = document.createElement('div');
     card.className = 'appointment-card' + inactiveClass(a);
     card.setAttribute('data-id', a.id);
@@ -300,6 +326,26 @@ function renderAppointmentsList() {
 
     listEl.appendChild(card);
   }
+}
+
+function timeToMinutes(t) {
+  if (!t || typeof t !== 'string') return 0;
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function minutesToTime(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${pad(h)}:${pad(m)}`;
+}
+
+function formatGapDuration(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} мин`;
+  if (m === 0) return `${h} ч`;
+  return `${h} ч ${m} мин`;
 }
 
 function escapeHtml(s) {

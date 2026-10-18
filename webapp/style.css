@@ -638,13 +638,57 @@ body {
   border-left: 2px solid var(--brand-300);
 }
 
+/* Индикатор свободного окна между тренировками */
+.appt-gap-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 4px;
+  padding: 4px 0;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.85;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.appt-gap-indicator:hover,
+.appt-gap-indicator:active {
+  opacity: 1;
+  transform: scale(0.99);
+}
+
+.appt-gap-line {
+  flex: 1;
+  height: 1px;
+  border-top: 1px dashed var(--accent-border);
+}
+
+.appt-gap-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--secondary-bg);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--accent-border);
+  white-space: nowrap;
+}
+
+.appt-gap-action {
+  color: var(--brand-500);
+  font-weight: 600;
+}
+
 /* --------------------------------------------------------------------------
    Плавающая кнопка «+» (FAB)
    -------------------------------------------------------------------------- */
 .fab-btn {
   position: fixed;
   right: 20px;
-  bottom: calc(max(var(--tg-content-safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px), 16px) + 24px);
+  bottom: calc(max(var(--tg-content-safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px), 16px) + 76px);
   width: 58px;
   height: 58px;
   border-radius: var(--radius-full);
@@ -663,6 +707,78 @@ body {
 .fab-btn:active {
   transform: scale(0.90);
   box-shadow: 0 4px 12px rgba(242, 112, 42, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Нижняя панель навигации (Bottom Navigation Bar)
+   -------------------------------------------------------------------------- */
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(56px + max(var(--tg-content-safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px)));
+  padding-bottom: max(var(--tg-content-safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px));
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 90;
+  box-sizing: border-box;
+}
+
+@supports not (backdrop-filter: blur(20px)) {
+  .bottom-nav {
+    background: var(--bg-card);
+  }
+}
+
+.nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 52px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-tab svg {
+  transition: transform 0.15s ease, stroke 0.15s ease;
+}
+
+.nav-tab:active {
+  transform: scale(0.92);
+}
+
+.nav-tab-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  line-height: 1;
+}
+
+.nav-tab.active {
+  color: var(--brand-500);
+}
+
+.nav-tab.active svg {
+  stroke: var(--brand-500);
+}
+
+.nav-tab.active .nav-tab-label {
+  font-weight: 600;
 }
 
 /* --------------------------------------------------------------------------

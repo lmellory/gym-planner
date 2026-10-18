@@ -9,18 +9,8 @@ export function timeLabel(a: Pick<Appointment, 'start_time'> & { end_time?: stri
   return a.start_time;
 }
 
-const SERVICE_LABELS: Record<string, string> = {
-  personal: 'персональная тренировка',
-  split: 'сплит-тренировка',
-  group: 'групповое занятие',
-  trial: 'пробное занятие',
-  consultation: 'консультация',
-  online: 'онлайн-тренировка',
-};
-
-export function serviceLabel(a: { service: string }): string {
-  return SERVICE_LABELS[a.service] ?? a.service;
-}
+import { serviceLabel, SERVICE_LABELS } from './services';
+export { serviceLabel, SERVICE_LABELS };
 
 export interface ClientContactInfo {
   phone?: string | null;
@@ -42,18 +32,20 @@ export function formatDay(
     for (const a of items) {
       out += `\n🕐 <b>${timeLabel(a)}</b> · ${escapeHtml(a.client_name)}`;
       if (a.who) out += ` (${escapeHtml(a.who)})`;
-      out += `\n   🏋️ ${serviceLabel(a)}`;
-      if (a.comment) out += `\n   💬 ${escapeHtml(a.comment)}`;
+      out += ` · 🏋️ ${serviceLabel(a)}`;
+
+      const details: string[] = [];
+      if (a.comment) details.push(`💬 ${escapeHtml(a.comment)}`);
 
       const contact = clientContacts?.get(a.client_name);
-      if (contact?.phone || contact?.telegram) {
-        const parts: string[] = [];
-        if (contact.phone) parts.push(`📞 ${escapeHtml(contact.phone)}`);
-        if (contact.telegram) {
-          const tgClean = contact.telegram.replace(/^@/, '');
-          parts.push(`💬 <a href="https://t.me/${tgClean}">@${escapeHtml(tgClean)}</a>`);
-        }
-        out += `\n   ${parts.join(' · ')}`;
+      if (contact?.phone) details.push(`📞 ${escapeHtml(contact.phone)}`);
+      if (contact?.telegram) {
+        const tgClean = contact.telegram.replace(/^@/, '');
+        details.push(`💬 <a href="https://t.me/${tgClean}">@${escapeHtml(tgClean)}</a>`);
+      }
+
+      if (details.length) {
+        out += `\n   └ ${details.join(' · ')}`;
       }
       out += '\n';
     }
