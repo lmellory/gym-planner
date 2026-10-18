@@ -8,3 +8,18 @@
 //  consultation — консультация / замеры / составление программы
 //  online       — онлайн-тренировка
 export const SERVICES: readonly string[] = ['personal', 'split', 'group', 'trial', 'consultation', 'online'];
+
+export const SERVICE_LABELS: Record<string, string> = {
+  personal: 'персональная тренировка',
+  split: 'сплит-тренировка',
+  group: 'групповое занятие',
+  trial: 'пробное занятие',
+  consultation: 'консультация',
+  online: 'онлайн-тренировка',
+};
+
+/** Получить русское название услуги. Принимает строку вида 'personal' или объект { service: 'personal' }. */
+export function serviceLabel(a: { service: string } | string): string {
+  const key = typeof a === 'string' ? a : a.service;
+  return SERVICE_LABELS[key] ?? key;
+}

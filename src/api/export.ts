@@ -27,16 +27,7 @@ export function csvEscape(val: unknown): string {
   }
   return str;
 }
-
-function serviceLabelRu(service: string): string {
-  if (service === 'personal') return 'персональная тренировка';
-  if (service === 'split') return 'сплит-тренировка';
-  if (service === 'group') return 'групповое занятие';
-  if (service === 'trial') return 'пробное занятие';
-  if (service === 'consultation') return 'консультация';
-  if (service === 'online') return 'онлайн-тренировка';
-  return service;
-}
+import { serviceLabel } from '../lib/services';
 
 /** withUser — добавить первым столбцом ID тренера (для выгрузки записей всех тренеров сразу). */
 export function buildCsv(items: Appointment[], opts: { withUser?: boolean } = {}): string {
@@ -52,7 +43,7 @@ export function buildCsv(items: Appointment[], opts: { withUser?: boolean } = {}
         a.end_time ?? '',
         a.client_name,
         a.who ?? '',
-        serviceLabelRu(a.service),
+        serviceLabel(a.service),
         a.price ?? '',
         STATUS_LABELS_RU[a.status] ?? a.status ?? '',
         a.comment ?? '',
@@ -154,7 +145,7 @@ export function buildFinanceCsv(appointments: Appointment[], expenses: Expense[]
 
   type Row = { date: string; kind: number; cells: Array<string | number> };
   const rows: Row[] = [
-    ...paid.map((a) => ({ date: a.date, kind: 0, cells: ['доход', a.date, a.client_name, serviceLabelRu(a.service), a.price as number] })),
+    ...paid.map((a) => ({ date: a.date, kind: 0, cells: ['доход', a.date, a.client_name, serviceLabel(a.service), a.price as number] })),
     ...expenses.map((e) => ({ date: e.date, kind: 1, cells: ['трата', e.date, e.name, 'расходы', e.amount] })),
   ].sort((x, y) => (x.date === y.date ? x.kind - y.kind : x.date < y.date ? -1 : 1));
 

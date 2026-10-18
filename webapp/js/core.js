@@ -346,10 +346,30 @@ function goScreen(name) {
       tg?.MainButton?.hide();
     }
   }
+
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    const mainTabs = ['main', 'clients', 'income', 'settings'];
+    if (mainTabs.includes(name)) {
+      bottomNav.style.display = 'flex';
+      document.querySelectorAll('.nav-tab').forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.screen === name);
+      });
+    } else {
+      bottomNav.style.display = 'none';
+    }
+  }
+
   window.scrollTo(0, 0);
   document.body.scrollTop = 0;
   document.documentElement.scrollTop = 0;
 }
+
+// Слушатель перехода на главное расписание из нижнего таббара
+document.getElementById('btn-tab-main')?.addEventListener('click', () => {
+  haptic('light');
+  goScreen('main');
+});
 
 // Подключаем слушатели навигации Telegram WebApp
 if (tg) {
