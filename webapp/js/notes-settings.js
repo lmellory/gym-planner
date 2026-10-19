@@ -95,6 +95,7 @@ async function openSettings() {
   loadPrices().catch(() => {});
   try {
     const s = await api('/settings');
+    state.settings = s;
     const enabledCheck = document.getElementById('setting-notify-enabled');
     const newApptCheck = document.getElementById('setting-notify-new-appt');
     const timeInput = document.getElementById('setting-notify-time');
@@ -176,9 +177,13 @@ async function saveSettings() {
         currency,
       }),
     });
+    state.settings = saved;
     CURRENCY = saved.currency || DEFAULT_CURRENCY;
     haptic('success');
     showToast('Настройки сохранены ✅');
+    if (state.currentScreen === 'main') {
+      renderAppointmentsList();
+    }
   } catch (err) {
     console.error('Ошибка сохранения настроек:', err);
   }

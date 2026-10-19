@@ -137,7 +137,7 @@ describe('validate appointment input', () => {
   });
 });
 
-import { cleanBirthday } from '../src/api/clients';
+import { cleanBirthday, cleanTelegram } from '../src/api/clients';
 
 describe('cleanBirthday', () => {
   it('нормализует корректные даты DD.MM', () => {
@@ -162,4 +162,28 @@ describe('cleanBirthday', () => {
     expect(cleanBirthday('15.03.1995')).toBeNull(); // год не допускается
   });
 });
+
+describe('cleanTelegram', () => {
+  it('нормализует корректные юзернеймы с @ и без него', () => {
+    expect(cleanTelegram('@squzzyy23')).toBe('squzzyy23');
+    expect(cleanTelegram('squzzyy23')).toBe('squzzyy23');
+    expect(cleanTelegram('  @user_123  ')).toBe('user_123');
+  });
+
+  it('возвращает null для пустых значений', () => {
+    expect(cleanTelegram(null)).toBeNull();
+    expect(cleanTelegram(undefined)).toBeNull();
+    expect(cleanTelegram('')).toBeNull();
+    expect(cleanTelegram('   ')).toBeNull();
+  });
+
+  it('отклоняет недопустимые юзернеймы (длина, спецсимволы)', () => {
+    expect(cleanTelegram('ab')).toBeNull(); // слишком короткий (< 3)
+    expect(cleanTelegram('a'.repeat(33))).toBeNull(); // слишком длинный (> 32)
+    expect(cleanTelegram('user-name')).toBeNull(); // дефис запрещён
+    expect(cleanTelegram('user.name')).toBeNull(); // точка запрещена
+    expect(cleanTelegram('привет')).toBeNull(); // кириллица запрещена
+  });
+});
+
 

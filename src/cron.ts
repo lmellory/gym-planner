@@ -57,11 +57,14 @@ export function notifyDecision(
 
 /** Чистая функция: что делать с результатом отправки. */
 export type SendOutcome = 'sent' | 'blocked' | 'retry';
-export function classifySend(r: { ok: boolean; error_code?: number } | null): SendOutcome {
+export function classifySend(r: { ok: boolean; error_code?: number; description?: string } | null): SendOutcome {
   if (r?.ok) return 'sent';
   // 403 (бот заблокирован) или другие 4xx кроме 429: Telegram отклонил запрос навсегда (например 400 Bad Request).
   // Бесконечно повторять каждую минуту нельзя — отмечаем как blocked/завершённое.
   if (typeof r?.error_code === 'number' && r.error_code >= 400 && r.error_code < 500 && r.error_code !== 429) {
+    console.warn(
+      `telegram send rejected (${r.error_code}${r.description ? ': ' + r.description : ''}), marking as non-retryable`,
+    );
     return 'blocked';
   }
   return 'retry';

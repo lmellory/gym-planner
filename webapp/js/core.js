@@ -332,7 +332,7 @@ function updateGreeting() {
 // ===== Состояние приложения =====
 const todayStr = fmt(new Date());
 
-const state = {
+const state = (window.state = {
   currentScreen: 'main',
   selectedDate: todayStr,
   weekStart: fmt(mondayOf(new Date())),
@@ -343,10 +343,11 @@ const state = {
   calendarYear: new Date().getFullYear(),
   calendarMonth: new Date().getMonth(), // 0..11
   prices: {},                           // прайс: { personal: 800, group: null, ... }
+  settings: null,                       // настройки тренера (work_start_time, work_end_time и др.)
   isAdmin: false,                       // администратор (по ответу сервера /api/me)
   actAs: null,                          // ID тренера, чьи записи правит админ; null — свои данные
   actAsLabel: '',                       // как показывать этого тренера (имя, @username или ID)
-};
+});
 
 // ===== Уведомления (Toast) и тактильный отклик =====
 let toastTimer = null;

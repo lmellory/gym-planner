@@ -445,8 +445,36 @@ describe('абонементы: карточка клиента и подска�
   });
 });
 
+describe('отображение свободных окон (gaps) в расписании', () => {
+  it('отображает окно до первой записи от начала рабочего дня и после записи', () => {
+    w.state.currentScreen = 'main';
+    w.state.settings = { work_start_time: '08:00', work_end_time: '20:00' };
+    w.state.appointments = [
+      { id: 999, status: 'scheduled', start_time: '10:00', end_time: '11:00', client_name: 'Тестовый Клиент', service: 'personal' },
+    ];
+    w.renderAppointmentsList();
+
+    const indicators = $$('.appt-gap-indicator');
+    expect(indicators.length).toBe(2);
+
+    // Первое окно: 08:00 - 10:00 (2 часа)
+    expect(indicators[0].textContent).toContain('Окно 2 ч');
+    expect(indicators[0].title).toBe('Свободное время: 2 ч');
+
+    // Второе окно: 11:00 - 20:00 (9 часов)
+    expect(indicators[1].textContent).toContain('Окно 9 ч');
+    expect(indicators[1].title).toBe('Свободное время: 9 ч');
+
+    // Клик по верхнему окну открывает форму с началом окна (08:00)
+    indicators[0].click();
+    expect($('#screen-form').classList.contains('active')).toBe(true);
+    expect($('#form-appt-start').value).toBe('08:00');
+  });
+});
+
 describe('здоровье страницы', () => {
   it('за весь сценарий не было ошибок скриптов', () => {
     expect(errors).toEqual([]);
   });
 });
+

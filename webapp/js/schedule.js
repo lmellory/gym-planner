@@ -258,8 +258,8 @@ function renderAppointmentsList() {
 
   listEl.innerHTML = '';
 
-  const workStart = state.settings?.work_start || null;
-  const workEnd = state.settings?.work_end || null;
+  const workStart = state.settings?.work_start_time || null;
+  const workEnd = state.settings?.work_end_time || null;
   const gaps = computeGaps(state.appointments, workStart, workEnd);
 
   function createGapElement(gap) {

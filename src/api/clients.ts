@@ -59,34 +59,54 @@ export function cleanTelegram(val: unknown): string | null {
   return clean;
 }
 
+export function parseClientPayload(body: any): {
+  error?: string;
+  data?: {
+    name: string;
+    phone: string | null;
+    telegram: string | null;
+    notes: string | null;
+    birthday: string | null;
+  };
+} {
+  const name = String(body?.name ?? '').trim();
+  if (!name) return { error: 'Имя клиента обязательно' };
+
+  let birthday: string | null = null;
+  if (body?.birthday !== undefined && body?.birthday !== null && String(body.birthday).trim() !== '') {
+    birthday = cleanBirthday(body.birthday);
+    if (!birthday) {
+      return { error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' };
+    }
+  }
+
+  let telegram: string | null = null;
+  if (body?.telegram !== undefined && body?.telegram !== null && String(body.telegram).trim() !== '') {
+    telegram = cleanTelegram(body.telegram);
+    if (!telegram) {
+      return { error: 'Некорректный username в Telegram (3–32 символа, латиница, цифры и _)' };
+    }
+  }
+
+  return {
+    data: {
+      name: name.slice(0, 100),
+      phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
+      telegram,
+      notes: body?.notes ? String(body.notes).trim().slice(0, 1000) : null,
+      birthday,
+    },
+  };
+}
+
 // POST /api/clients
 clients.post('/', async (c) => {
   const userId = c.get('userId');
   const body: any = await c.req.json().catch(() => null);
-  const name = String(body?.name ?? '').trim();
-  if (!name) return c.json({ error: 'Имя клиента обязательно' }, 400);
+  const parsed = parseClientPayload(body);
+  if (parsed.error || !parsed.data) return c.json({ error: parsed.error }, 400);
 
-  let bday: string | null = null;
-  if (body?.birthday) {
-    bday = cleanBirthday(body.birthday);
-    if (!bday) return c.json({ error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' }, 400);
-  }
-
-  let tg: string | null = null;
-  if (body?.telegram !== undefined && body?.telegram !== null && String(body.telegram).trim() !== '') {
-    tg = cleanTelegram(body.telegram);
-    if (!tg) {
-      return c.json({ error: 'Некорректный username в Telegram (3–32 символа, латиница, цифры и _)' }, 400);
-    }
-  }
-
-  const id = await insertClient(c.env.DB, userId, {
-    name: name.slice(0, 100),
-    phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
-    telegram: tg,
-    notes: body?.notes ? String(body.notes).trim().slice(0, 1000) : null,
-    birthday: bday,
-  });
+  const id = await insertClient(c.env.DB, userId, parsed.data);
 
   return c.json({ ok: true, id }, 201);
 });
@@ -98,30 +118,10 @@ clients.put('/:id', async (c) => {
   if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'bad id' }, 400);
 
   const body: any = await c.req.json().catch(() => null);
-  const name = String(body?.name ?? '').trim();
-  if (!name) return c.json({ error: 'Имя клиента обязательно' }, 400);
+  const parsed = parseClientPayload(body);
+  if (parsed.error || !parsed.data) return c.json({ error: parsed.error }, 400);
 
-  let bday: string | null = null;
-  if (body?.birthday) {
-    bday = cleanBirthday(body.birthday);
-    if (!bday) return c.json({ error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' }, 400);
-  }
-
-  let tg: string | null = null;
-  if (body?.telegram !== undefined && body?.telegram !== null && String(body.telegram).trim() !== '') {
-    tg = cleanTelegram(body.telegram);
-    if (!tg) {
-      return c.json({ error: 'Некорректный username в Telegram (3–32 символа, латиница, цифры и _)' }, 400);
-    }
-  }
-
-  const result = await updateClient(c.env.DB, userId, id, {
-    name: name.slice(0, 100),
-    phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
-    telegram: tg,
-    notes: body?.notes ? String(body.notes).trim().slice(0, 1000) : null,
-    birthday: bday,
-  });
+  const result = await updateClient(c.env.DB, userId, id, parsed.data);
 
   if (result === 'not_found') return c.json({ error: 'not found' }, 404);
   if (result === 'name_taken') return c.json({ error: 'Клиент с таким именем уже есть' }, 409);

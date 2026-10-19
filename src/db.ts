@@ -382,20 +382,6 @@ export async function deleteDayNote(db: D1Database, userId: number, date: string
   return (res.meta.changes ?? 0) > 0;
 }
 
-export async function searchAppointments(db: D1Database, userId: number, query: string): Promise<Appointment[]> {
-  const clean = query.trim().slice(0, 100);
-  const escaped = clean.replace(/([%_\\])/g, '\\$1');
-  const r = await db
-    .prepare(
-      `SELECT * FROM appointments
-       WHERE user_id = ? AND client_name LIKE ? ESCAPE '\\'
-       ORDER BY date DESC, start_time DESC
-       LIMIT 50`,
-    )
-    .bind(userId, `%${escaped}%`)
-    .all<Appointment>();
-  return r.results;
-}
 
 export async function updateUserSettings(
   db: D1Database,
