@@ -74,7 +74,7 @@ export function actAsAllowed(method: string, pathname: string): boolean {
   // Настройки — и чтение, и запись: админ настраивает персонализацию тренера из админ-панели
   if (under('/api/settings')) return true;
   if (method !== 'GET') return false;
-  return ['/api/days', '/api/search', '/api/clients', '/api/prices', '/api/settings', '/api/notes', '/api/memberships'].some(under);
+  return ['/api/days', '/api/clients', '/api/prices', '/api/settings', '/api/notes', '/api/memberships'].some(under);
 }
 
 /**

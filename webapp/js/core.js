@@ -125,17 +125,115 @@ async function api(path, options = {}) {
 const pad = (n) => String(n).padStart(2, '0');
 const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
+  if (!timeStr || typeof timeStr !== 'string') return 0;
   const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
+  return (h || 0) * 60 + (m || 0);
 }
 
 function minutesToTime(mins) {
-  const clamped = Math.max(0, Math.min(23 * 60 + 59, mins));
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, mins || 0));
   const h = Math.floor(clamped / 60);
   const m = clamped % 60;
   return `${pad(h)}:${pad(m)}`;
+}
+
+function formatGapDuration(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} мин`;
+  if (m === 0) return `${h} ч`;
+  return `${h} ч ${m} мин`;
+}
+
+/**
+ * Вычисляет свободные окна в расписании с учётом рабочих часов.
+ * @param {Array} appointments Записи за день
+ * @param {string|null} [workStart] Начало рабочего дня (например '08:00')
+ * @param {string|null} [workEnd] Конец рабочего дня (например '20:00')
+ * @param {number} [minGapMinutes=30] Минимальная длина окна
+ */
+function computeGaps(appointments, workStart = null, workEnd = null, minGapMinutes = 30) {
+  const active = (appointments || [])
+    .filter((a) => a && a.status === 'scheduled' && a.start_time)
+    .map((a) => {
+      const s = timeToMinutes(a.start_time);
+      const e = a.end_time ? timeToMinutes(a.end_time) : s + 60;
+      return { id: a.id, start: s, end: Math.max(s, e) };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const gaps = [];
+  const ws = workStart ? timeToMinutes(workStart) : null;
+  const we = workEnd ? timeToMinutes(workEnd) : null;
+
+  if (active.length === 0) {
+    if (ws !== null && we !== null && we - ws >= minGapMinutes) {
+      gaps.push({
+        start: minutesToTime(ws),
+        end: minutesToTime(we),
+        duration: we - ws,
+        afterId: null,
+        beforeId: null,
+      });
+    }
+    return gaps;
+  }
+
+  // Окно от начала рабочего дня до первой записи
+  if (ws !== null && active[0].start - ws >= minGapMinutes) {
+    gaps.push({
+      start: minutesToTime(ws),
+      end: minutesToTime(active[0].start),
+      duration: active[0].start - ws,
+      afterId: null,
+      beforeId: active[0].id,
+    });
+  }
+
+  // Окна между записями
+  let currentEnd = active[0].end;
+  let lastApptId = active[0].id;
+
+  for (let i = 1; i < active.length; i++) {
+    const cur = active[i];
+    if (cur.start - currentEnd >= minGapMinutes) {
+      gaps.push({
+        start: minutesToTime(currentEnd),
+        end: minutesToTime(cur.start),
+        duration: cur.start - currentEnd,
+        afterId: lastApptId,
+        beforeId: cur.id,
+      });
+    }
+    if (cur.end > currentEnd) {
+      currentEnd = cur.end;
+      lastApptId = cur.id;
+    }
+  }
+
+  // Окно после последней записи до конца рабочего дня
+  if (we !== null && we - currentEnd >= minGapMinutes) {
+    gaps.push({
+      start: minutesToTime(currentEnd),
+      end: minutesToTime(we),
+      duration: we - currentEnd,
+      afterId: lastApptId,
+      beforeId: null,
+    });
+  }
+
+  return gaps;
 }
 
 function formatApptTime(a) {

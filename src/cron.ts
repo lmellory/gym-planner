@@ -59,7 +59,11 @@ export function notifyDecision(
 export type SendOutcome = 'sent' | 'blocked' | 'retry';
 export function classifySend(r: { ok: boolean; error_code?: number } | null): SendOutcome {
   if (r?.ok) return 'sent';
-  if (r?.error_code === 403) return 'blocked';
+  // 403 (бот заблокирован) или другие 4xx кроме 429: Telegram отклонил запрос навсегда (например 400 Bad Request).
+  // Бесконечно повторять каждую минуту нельзя — отмечаем как blocked/завершённое.
+  if (typeof r?.error_code === 'number' && r.error_code >= 400 && r.error_code < 500 && r.error_code !== 429) {
+    return 'blocked';
+  }
   return 'retry';
 }
 
@@ -189,7 +193,7 @@ export function formatBirthdayNotification(
     if (c.phone) msg += `\n📞 ${escapeHtml(c.phone)}`;
     if (c.telegram) {
       const tg = c.telegram.replace(/^@/, '');
-      msg += `\n💬 <a href="https://t.me/${escapeHtml(tg)}">@${escapeHtml(tg)}</a>`;
+      msg += `\n💬 <a href="https://t.me/${encodeURIComponent(tg)}">@${escapeHtml(tg)}</a>`;
     }
     if (c.notes) msg += `\n📝 <i>${escapeHtml(c.notes)}</i>`;
     msg += `\n\nНе забудьте поздравить клиента! 🥳`;
@@ -202,7 +206,7 @@ export function formatBirthdayNotification(
     if (c.phone) msg += `\n  📞 ${escapeHtml(c.phone)}`;
     if (c.telegram) {
       const tg = c.telegram.replace(/^@/, '');
-      msg += `\n  💬 <a href="https://t.me/${escapeHtml(tg)}">@${escapeHtml(tg)}</a>`;
+      msg += `\n  💬 <a href="https://t.me/${encodeURIComponent(tg)}">@${escapeHtml(tg)}</a>`;
     }
     if (c.notes) msg += `\n  📝 <i>${escapeHtml(c.notes)}</i>`;
   }

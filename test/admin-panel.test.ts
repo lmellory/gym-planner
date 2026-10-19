@@ -91,7 +91,7 @@ describe('чистые функции', () => {
     expect(actAsAllowed('DELETE', '/api/appointments/5')).toBe(true);
     // Настройки тренера админ правит за него: там персонализация и рабочий график
     for (const m of ['GET', 'PUT']) expect(actAsAllowed(m, '/api/settings')).toBe(true);
-    for (const p of ['/api/days', '/api/days/slots', '/api/search', '/api/clients', '/api/clients/3', '/api/prices', '/api/notes/2026-10-14', '/api/memberships/summary']) {
+    for (const p of ['/api/days', '/api/days/slots', '/api/clients', '/api/clients/3', '/api/prices', '/api/notes/2026-10-14', '/api/memberships/summary']) {
       expect(actAsAllowed('GET', p)).toBe(true);
       expect(actAsAllowed('PUT', p)).toBe(false);
       expect(actAsAllowed('POST', p)).toBe(false);
@@ -216,7 +216,7 @@ describe('правка записей за тренера (X-Act-As)', () => {
       '/api/prices',
       '/api/settings',
       '/api/notes/2026-10-14',
-      '/api/search?q=' + encodeURIComponent('Чужая'),
+      '/api/clients?q=' + encodeURIComponent('Чужая'),
     ]) {
       expect((await apiAs(ADMIN2, OTHER, 'GET', url)).status, url).toBe(200);
     }

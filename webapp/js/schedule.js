@@ -257,31 +257,39 @@ function renderAppointmentsList() {
   }
 
   listEl.innerHTML = '';
-  let lastActiveEndMins = null;
+
+  const workStart = state.settings?.work_start || null;
+  const workEnd = state.settings?.work_end || null;
+  const gaps = computeGaps(state.appointments, workStart, workEnd);
+
+  function createGapElement(gap) {
+    const gapEl = document.createElement('div');
+    gapEl.className = 'appt-gap-indicator';
+    gapEl.title = `Свободное время: ${formatGapDuration(gap.duration)}`;
+    gapEl.innerHTML = `
+      <span class="appt-gap-line"></span>
+      <span class="appt-gap-badge">☕ Окно ${formatGapDuration(gap.duration)} <span class="appt-gap-action">+ запись</span></span>
+      <span class="appt-gap-line"></span>
+    `;
+    gapEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      haptic('light');
+      openForm({ date: state.selectedDate, start_time: gap.start });
+    });
+    return gapEl;
+  }
+
+  // Окно до первой записи (от начала рабочего дня)
+  const topGap = gaps.find((g) => g.afterId === null && g.beforeId !== null);
+  if (topGap) {
+    listEl.appendChild(createGapElement(topGap));
+  }
 
   for (const a of state.appointments) {
-    if (a.status === 'scheduled') {
-      const startMins = timeToMinutes(a.start_time);
-      if (lastActiveEndMins !== null && startMins - lastActiveEndMins >= 30) {
-        const gapMins = startMins - lastActiveEndMins;
-        const gapStartStr = minutesToTime(lastActiveEndMins);
-        const gapEl = document.createElement('div');
-        gapEl.className = 'appt-gap-indicator';
-        gapEl.title = `Свободное время: ${formatGapDuration(gapMins)}`;
-        gapEl.innerHTML = `
-          <span class="appt-gap-line"></span>
-          <span class="appt-gap-badge">☕ Окно ${formatGapDuration(gapMins)} <span class="appt-gap-action">+ запись</span></span>
-          <span class="appt-gap-line"></span>
-        `;
-        gapEl.addEventListener('click', (e) => {
-          e.stopPropagation();
-          haptic('light');
-          openForm({ date: state.selectedDate, start_time: gapStartStr });
-        });
-        listEl.appendChild(gapEl);
-      }
-      const endMins = a.end_time ? timeToMinutes(a.end_time) : (startMins + 60);
-      lastActiveEndMins = lastActiveEndMins === null ? endMins : Math.max(lastActiveEndMins, endMins);
+    // Окно между записями
+    const gapBefore = gaps.find((g) => g.beforeId === a.id && g.afterId !== null);
+    if (gapBefore) {
+      listEl.appendChild(createGapElement(gapBefore));
     }
 
     const card = document.createElement('div');
@@ -326,30 +334,11 @@ function renderAppointmentsList() {
 
     listEl.appendChild(card);
   }
-}
 
-function timeToMinutes(t) {
-  if (!t || typeof t !== 'string') return 0;
-  const [h, m] = t.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-function minutesToTime(mins) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${pad(h)}:${pad(m)}`;
-}
-
-function formatGapDuration(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} мин`;
-  if (m === 0) return `${h} ч`;
-  return `${h} ч ${m} мин`;
-}
-
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Окно после последней записи (до конца рабочего дня)
+  const bottomGap = gaps.find((g) => g.beforeId === null && g.afterId !== null);
+  if (bottomGap) {
+    listEl.appendChild(createGapElement(bottomGap));
+  }
 }
 

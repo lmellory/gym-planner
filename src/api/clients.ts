@@ -50,6 +50,15 @@ export function cleanBirthday(val: unknown): string | null {
   return `${String(day).padStart(2, '0')}.${String(month).padStart(2, '0')}`;
 }
 
+export function cleanTelegram(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  const clean = s.replace(/^@/, '');
+  if (!/^[A-Za-z0-9_]{3,32}$/.test(clean)) return null;
+  return clean;
+}
+
 // POST /api/clients
 clients.post('/', async (c) => {
   const userId = c.get('userId');
@@ -63,10 +72,18 @@ clients.post('/', async (c) => {
     if (!bday) return c.json({ error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' }, 400);
   }
 
+  let tg: string | null = null;
+  if (body?.telegram !== undefined && body?.telegram !== null && String(body.telegram).trim() !== '') {
+    tg = cleanTelegram(body.telegram);
+    if (!tg) {
+      return c.json({ error: 'Некорректный username в Telegram (3–32 символа, латиница, цифры и _)' }, 400);
+    }
+  }
+
   const id = await insertClient(c.env.DB, userId, {
     name: name.slice(0, 100),
     phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
-    telegram: body?.telegram ? String(body.telegram).trim().slice(0, 50) : null,
+    telegram: tg,
     notes: body?.notes ? String(body.notes).trim().slice(0, 1000) : null,
     birthday: bday,
   });
@@ -90,10 +107,18 @@ clients.put('/:id', async (c) => {
     if (!bday) return c.json({ error: 'Некорректный день рождения (укажи число и месяц, например 15.03)' }, 400);
   }
 
+  let tg: string | null = null;
+  if (body?.telegram !== undefined && body?.telegram !== null && String(body.telegram).trim() !== '') {
+    tg = cleanTelegram(body.telegram);
+    if (!tg) {
+      return c.json({ error: 'Некорректный username в Telegram (3–32 символа, латиница, цифры и _)' }, 400);
+    }
+  }
+
   const result = await updateClient(c.env.DB, userId, id, {
     name: name.slice(0, 100),
     phone: body?.phone ? String(body.phone).trim().slice(0, 50) : null,
-    telegram: body?.telegram ? String(body.telegram).trim().slice(0, 50) : null,
+    telegram: tg,
     notes: body?.notes ? String(body.notes).trim().slice(0, 1000) : null,
     birthday: bday,
   });

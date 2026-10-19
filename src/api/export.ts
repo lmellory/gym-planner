@@ -7,6 +7,7 @@ import { isPeriod, periodRange } from '../lib/stats';
 import { isHeld, STATUS_LABELS_RU } from '../lib/status';
 import { sendDocument } from '../bot/telegram';
 import { isDate, nowInTz } from '../lib/time';
+import { serviceLabel } from '../lib/services';
 
 export { buildJsonBackup };
 
@@ -27,7 +28,6 @@ export function csvEscape(val: unknown): string {
   }
   return str;
 }
-import { serviceLabel } from '../lib/services';
 
 /** withUser — добавить первым столбцом ID тренера (для выгрузки записей всех тренеров сразу). */
 export function buildCsv(items: Appointment[], opts: { withUser?: boolean } = {}): string {

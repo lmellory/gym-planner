@@ -61,6 +61,18 @@ describe('записи', () => {
     expect(clients.map((c) => c.name)).toContain('Оля');
   });
 
+  it('валидация telegram username клиента: @чистится, невалидный → 400', async () => {
+    const ok = await api(env, OWNER, 'POST', '/api/clients', { name: 'Вика', telegram: '@vika_gym' });
+    expect(ok.status).toBe(201);
+    const clients = (await api(env, OWNER, 'GET', '/api/clients')).json as any[];
+    const vika = clients.find((c) => c.name === 'Вика');
+    expect(vika.telegram).toBe('vika_gym');
+
+    const bad = await api(env, OWNER, 'POST', '/api/clients', { name: 'Плохой', telegram: 'bad<script>"' });
+    expect(bad.status).toBe(400);
+    expect(bad.json.error).toContain('Telegram');
+  });
+
   it('заметка дня уходит в чат только при включённой настройке notify_note', async () => {
     await api(env, OWNER, 'PUT', '/api/notes/2026-10-12', { text: 'программа на день' });
     expect(tg.filter((c) => c.method === 'sendMessage')).toHaveLength(0);

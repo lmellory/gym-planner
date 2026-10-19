@@ -3,14 +3,14 @@ import type { Appointment } from '../types';
 import { escapeHtml } from '../bot/telegram';
 import { weekdayRu } from './time';
 import { isActiveStatus } from './status';
+import { serviceLabel, SERVICE_LABELS } from './services';
+
+export { serviceLabel, SERVICE_LABELS };
 
 /** Время записи для показа: только начало, например «18:00» (конец нужен лишь для расчётов). */
 export function timeLabel(a: Pick<Appointment, 'start_time'> & { end_time?: string | null }): string {
   return a.start_time;
 }
-
-import { serviceLabel, SERVICE_LABELS } from './services';
-export { serviceLabel, SERVICE_LABELS };
 
 export interface ClientContactInfo {
   phone?: string | null;
@@ -41,7 +41,8 @@ export function formatDay(
       if (contact?.phone) details.push(`📞 ${escapeHtml(contact.phone)}`);
       if (contact?.telegram) {
         const tgClean = contact.telegram.replace(/^@/, '');
-        details.push(`💬 <a href="https://t.me/${tgClean}">@${escapeHtml(tgClean)}</a>`);
+        const tgEncoded = encodeURIComponent(tgClean);
+        details.push(`💬 <a href="https://t.me/${tgEncoded}">@${escapeHtml(tgClean)}</a>`);
       }
 
       if (details.length) {

@@ -20,13 +20,13 @@ enabled = true
 [vars]
 TZ = "Europe/Chisinau"
 ENABLE_ID_COMMAND = "true"
-# Администраторы (Telegram ID через запятую; это не секрет, при желании можно хранить как секрет: wrangler secret put ADMIN_ID).
+# Администраторы (Telegram ID через запятую). Рекомендуется хранить в секретах: `wrangler secret put ADMIN_ID`.
 # Им доступны команды бота (/admin) и админ-панель в Mini App: выбор тренера, добавление, правка и удаление его записей.
 # Доступ тренерам выдаётся только администратором: /adduser выдаёт, /ban закрывает, /unban возвращает.
-ADMIN_ID = "5067848442,352999678"
-TURSO_URL = "libsql://gymplanner-lmellory.aws-eu-west-1.turso.io"   # НОВАЯ база Turso для тренера, не база маникюрного бота
-# После первого деплоя впиши сюда адрес своего Worker (с https:// и слэшем в конце):
-APP_URL = "https://gym-planner.mellory.workers.dev"
+ADMIN_ID = "YOUR_ADMIN_TELEGRAM_ID"
+TURSO_URL = "libsql://gymplanner-db.aws-eu-west-1.turso.io"
+# Адрес вашего Worker (с https:// и слэшем в конце):
+APP_URL = "https://gym-planner.your-subdomain.workers.dev"
 
 # Секреты (задаются через wrangler secret put):
 #   wrangler secret put BOT_TOKEN

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "version-assets": "node scripts/version-assets.js",
+    "deploy": "node scripts/version-assets.js && wrangler deploy",
     "migrate": "node scripts/migrate.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

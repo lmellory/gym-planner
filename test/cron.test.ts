@@ -63,8 +63,9 @@ describe('classifySend', () => {
     expect(classifySend({ ok: true })).toBe('sent');
   });
 
-  it('403 → blocked (повторять не нужно)', () => {
+  it('403 и 400 (клиентские ошибки) → blocked (повторять не нужно)', () => {
     expect(classifySend({ ok: false, error_code: 403 })).toBe('blocked');
+    expect(classifySend({ ok: false, error_code: 400 })).toBe('blocked');
   });
 
   it('прочие ошибки и сетевой сбой → retry', () => {
